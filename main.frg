@@ -38,7 +38,7 @@ sig Player {
     money : one Int
 }
 
-one sig Table {
+sig Table {
     revealed : set Card
 }
 
@@ -48,20 +48,59 @@ one sig Table {
 // make something like 
 // top 
 // linear stack type thing? 
-one sig Deck {
+sig Deck {
     top : one Card,
     cardOrder : pfunc Card->Card
 }
 
 
-// state
-sig State {
-    next : lone State,
-    players: set Player, // maybe need this for performance
-    playerOrder : pfunc Player->Player, // player order changes when people get out
+sig Turn {
+    next : lone Turn,
+    action : one State,
+    challenge : one State,
+    reaction : one State,
+    reactionChallenge : one State
     currentPlayer : one Player
 }
 
+
+// state
+sig State {
+    deck : one Deck,
+    table : one Table,
+    players : set Player, // maybe need this for performance
+    playerOrder : pfunc Player->Player, // player order changes when people get out
+}
+
+
+pred initState[s : State] {
+    // TODO - describe initial state (starting conditions)
+}
+
+pred deckWellformed[s : State] {
+    // TODO - make sure deck is well-formed 
+    // thought: leave linear enforcement to bounds?
+}
+
+pred cardsWellAllocated[s : State] {
+    // TODO - cards should only be in one place (deck/table/hand) at a time
+}
+
+pred stateWellformed[s : State] {
+    // TOOD - state orders should be ok, live players should be consistent
+}
+
+pred turnStatesValid[t : Turn] {
+    // TODO - check that a turn's states are all valid given the currentPlayer
+}
+
+pred turnStatesTransition[t : Turn] {
+    // TODO - states within a turn should follow transition rules
+}
+
+pred turnTraces {
+    // TODO - turns should flow
+}
 
 
 // action predicates [old state, new state]
