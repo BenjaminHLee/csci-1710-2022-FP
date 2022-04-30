@@ -84,6 +84,14 @@ pred deckWellformed[s : State] {
 
 pred cardsWellAllocated[s : State] {
     // TODO - cards should only be in one place (deck/table/hand) at a time
+    all card : Card | {
+        card in s.table.revealed or
+        card in *(s.deck.cardOrder) or
+        one p : s.players | { card = p.card }
+        not card in s.table.revealed and card in *(s.deck.cardOrder)
+        not card in *(s.deck.cardOrder) and some p : s.players | { card = p.card }
+        not card in s.table.revealed and some p : s.players | { card = p.card } 
+    }
 }
 
 pred stateWellformed[s : State] {
@@ -96,10 +104,19 @@ pred turnStatesValid[t : Turn] {
 
 pred turnStatesTransition[t : Turn] {
     // TODO - states within a turn should follow transition rules
+    validChallenge[t.action, t.challenge]
+    validReaciont[t.challenge, t.reaction]
+    validReChallenge[t.reaciton, t.reactionChallenge]
 }
 
 pred turnTraces {
     // TODO - turns should flow
+    initState
+    all t : Turn {
+        (#{t.reactionChallenge.players} = 1) => no t.next
+        some t.next => validAction[t.reactionChallenge, t.next.action]
+        some t.next => t.next.currentPlayer = t.reactionChallenge.playerOrder[t.currentPlayer]
+    }
 }
 
 
