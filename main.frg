@@ -32,14 +32,14 @@ sig Player {
 
     knowledge : set State->Player->Role, // Set of possible roles for each player
 
-    card : one Card,
+    card : pfunc State->Card,
     //need to extend the bitwidth if we're going to go all the way to 12 coins
     //see ed #746
-    money : one Int
+    money : pfunc State->Int
 }
 
-sig Table {
-    revealed : set Card
+one sig Table {
+    revealed : set State->Card
 }
 
 // deck
@@ -67,11 +67,26 @@ sig Turn {
 // state
 sig State {
     deck : one Deck,
-    table : one Table,
+    // table : one Table,
     players : set Player, // maybe need this for performance
     playerOrder : pfunc Player->Player, // player order changes when people get out
 }
 
+pred initTurn[t : Turn] {
+    // what constraints can we really express beyond just deck is well-formed?
+    // each player has one card
+    // table has n (player count) cards
+    // so everything else must be in the deck?
+    no prev : Turn | prev.next = t
+    #{ table.revealed } = #{ Player? }
+    #{ Player } = #{ t.playerOrder } // how do you get the number of distinct objects mentioned in a relation again
+    // idk all i remember was that there's some weird-ass way for this to work
+    // wait hold on that's sufficient
+    // yes
+    // so this says that everyone's alive
+    all p : Player | p.money = 2
+    // Ohhh there's probably something about knowledge here too. in Player o lol ah fuck card should be a function of state too
+}
 
 pred initState[s : State] {
     // TODO - describe initial state (starting conditions)
@@ -88,9 +103,10 @@ pred cardsWellAllocated[s : State] {
         card in s.table.revealed or
         card in *(s.deck.cardOrder) or
         one p : s.players | { card = p.card }
-        not card in s.table.revealed and card in *(s.deck.cardOrder)
-        not card in *(s.deck.cardOrder) and some p : s.players | { card = p.card }
-        not card in s.table.revealed and some p : s.players | { card = p.card } 
+        no disj p1, p2 : s.players | { p1.card = p2.card }
+        not (card in s.table.revealed and card in *(s.deck.cardOrder))
+        not (card in *(s.deck.cardOrder) and some p : s.players | { card = p.card })
+        not (card in s.table.revealed and some p : s.players | { card = p.card })
     }
 }
 
