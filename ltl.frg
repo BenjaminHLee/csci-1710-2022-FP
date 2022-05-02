@@ -45,7 +45,7 @@ one sig BlockStealWithAmbassador extends Reaction {}
 one sig BlockStealWithCaptain extends Reaction {}
 
 one sig GameState {
-    var targetPlayer : lone Player,
+    var blockingPlayer : lone Player,
     var action : one Action,
     var challenge : lone Player,
     var reaction : lone Reaction,
@@ -101,17 +101,18 @@ pred inDeck[c : Card] {
 }
 
 
-pred targetValid {
-    some GameState.targetPlayer iff {
-        GameState.action = Steal
-    }
-    some GameState.targetPlayer => {
-        isAlive[GameState.targetPlayer]
+pred blockerValid {
+    some GameState.blockingPlayer iff some GameState.reaction
+    some GameState.blockingPlayer => {
+        GameState.action = Steal or GameState.action = Tax
+        isAlive[GameState.blockingPlayer]
+        GameState.blockingPlayer != Table.currentPlayer
     }
 }
 
 pred actionValid {
     GameState.action = DoNothing iff #{ Table.playerOrder } = 1
+    GameState.action = Coup => Table.currentPlayer.money >= 7
 }
 
 
@@ -179,7 +180,7 @@ pred wellformed {
     cardsWellAllocated
     deckWellformed
     playerOrderValid
-    always { targetValid and actionValid and challengeValid and reactionValid and reactionChallengeValid }
+    always { blockerValid and actionValid and challengeValid and reactionValid and reactionChallengeValid }
 }
 
 pred init {
@@ -201,12 +202,15 @@ pred playerDies[p : Player] {
 }
 
 pred challengeSucceeds {
+    GameState.action = Exchange and Table.currentPlayer.card.role != Ambassador
     GameState.action = Steal and Table.currentPlayer.card.role != Captain
+    GameState.action = Tax and Table.currentPlayer.card.role != Duke
 }
 
 pred reactionChallengeSucceeds {
-    ((GameState.reaction = BlockStealWithAmbassador and GameState.targetPlayer.card.role != Ambassador) or
-        (GameState.reaction = BlockStealWithCaptain and GameState.targetPlayer.card.role != Captain))
+    ((GameState.reaction = BlockStealWithAmbassador and GameState.blockingPlayer.card.role != Ambassador) or
+        (GameState.reaction = BlockStealWithCaptain and GameState.blockingPlayer.card.role != Captain) or
+        (GameState.reaction = BlockForeignAid and GameState.blockingPlayer.card.role != Duke))
 }
 
 pred replaceCard[p : Player] {
@@ -227,9 +231,7 @@ pred income {
 
     deckRemainsConstant
     tableRemainsConstant
-    all p : Player | {
-        p != Table.currentPlayer => playerRemainsConstant[p]
-    }
+    all p : Player - Table.currentPlayer | playerRemainsConstant[p]
 
 }
 // foreign aid
@@ -240,31 +242,41 @@ pred foreignAid {
 
     deckRemainsConstant
     tableRemainsConstant
-    all p : Player | {
-        p != Table.currentPlayer => playerRemainsConstant[p]
+    all p : Player - Table.currentPlayer | playerRemainsConstant[p]
+}
+
+pred coup {
+    Table.currentPlayer.card' = Table.currentPlayer.card
+    Table.currentPlayer.knowledge' = Table.currentPlayer.knowledge
+    Table.currentPlayer.money' = subtract[Table.currentPlayer.money, 7]
+    playerDies[GameState.blockingPlayer]
+    deckRemainsConstant
+    all p : (Player - (Table.currentPlayer + GameState.blockingPlayer)) | {
+        playerRemainsConstant[p]
     }
+
 }
 
 pred steal {
     Table.currentPlayer.card' = Table.currentPlayer.card
     Table.currentPlayer.knowledge' = Table.currentPlayer.knowledge
-    GameState.targetPlayer.card' = GameState.targetPlayer.card
-    GameState.targetPlayer.knowledge' = GameState.targetPlayer.knowledge
+    GameState.blockingPlayer.card' = GameState.blockingPlayer.card
+    GameState.blockingPlayer.knowledge' = GameState.blockingPlayer.knowledge
     deckRemainsConstant
     tableRemainsConstant
-    all p : (Player - (Table.currentPlayer + GameState.targetPlayer)) | {
+    all p : (Player - (Table.currentPlayer + GameState.blockingPlayer)) | {
         playerRemainsConstant[p]
     }
 
-    GameState.targetPlayer.money <= 1 => {
-        let stealMoney = GameState.targetPlayer.money | {
+    GameState.blockingPlayer.money <= 1 => {
+        let stealMoney = GameState.blockingPlayer.money | {
             Table.currentPlayer.money' = add[Table.currentPlayer.money, stealMoney]
-            GameState.targetPlayer.money'  = subtract[GameState.targetPlayer.money, stealMoney]
+            GameState.blockingPlayer.money'  = subtract[GameState.blockingPlayer.money, stealMoney]
         }
     }
-    GameState.targetPlayer.money >= 2 => {
+    GameState.blockingPlayer.money >= 2 => {
         Table.currentPlayer.money' = add[Table.currentPlayer.money, 2]
-        GameState.targetPlayer.money'  = subtract[GameState.targetPlayer.money, 2]
+        GameState.blockingPlayer.money'  = subtract[GameState.blockingPlayer.money, 2]
     }
 }
 
@@ -276,15 +288,16 @@ pred tax {
     
     deckRemainsConstant
     tableRemainsConstant
-    all p : Player | {
-        p != Table.currentPlayer => playerRemainsConstant[p]
-    }
+    all p : Player - Table.currentPlayer | playerRemainsConstant[p]
 }
 
 pred doAction {
-    GameState.action = Steal => {steal} else {
-        allRemainsConstant
-    }
+    GameState.action = Income => income
+    GameState.action = ForeignAid => foreignAid
+    GameState.action = Coup => coup
+    GameState.action = Steal => steal
+    GameState.action = Tax => tax
+    GameState.action = DoNothing => allRemainsConstant
 }
 
 pred trans {  
@@ -307,7 +320,7 @@ pred trans {
             }
             (some GameState.reactionChallenge and reactionChallengeSucceeds) => {
                 // Action attempted to block; block was successfully challenged
-                playerDies[GameState.targetPlayer]
+                playerDies[GameState.blockingPlayer]
                 // Action goes through
                 doAction
             } else {
@@ -315,7 +328,7 @@ pred trans {
                     // block was challenged unsuccessfully; continue to action
                     playerDies[GameState.reactionChallenge]
                     // replace card
-                    replaceCard[GameState.targetPlayer]
+                    replaceCard[GameState.blockingPlayer]
                 }
                 some GameState.reaction => {
                     allRemainsConstant 
@@ -332,10 +345,18 @@ pred onlyStealOrDoNothing {
     always { GameState.action = Steal or GameState.action = DoNothing }
 }
 
+pred exceptExchange {
+    always { GameState.action != Exchange }
+}
+
 pred traces {
     init
     always trans
-    onlyStealOrDoNothing
+    // onlyStealOrDoNothing
+    // exceptExchange
+    // always { GameState.action != Steal and GameState.action != Exchange }
+    always { GameState.action = Income or GameState.action = Coup or GameState.action = DoNothing }
+    // eventually { GameState.action = Coup }
 }
 
 run {
