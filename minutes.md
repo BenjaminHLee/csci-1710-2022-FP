@@ -25,3 +25,6 @@
 "this pop tart is really good"
 "is there a cases? of course there's not a cases. what the fuck am I saying"
 "all remains constant. that's like a zenyada line or something"
+"ohoho...greetings" "UNSAT???"
+"this is forge, we don't understand it"
+"this is the first time i've heard my computer fan"

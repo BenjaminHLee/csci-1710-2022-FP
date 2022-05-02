@@ -147,18 +147,21 @@ pred reactionChallengeValid {
 
 pred deckWellformed {
     // TODO - make sure deck is well-formed 
-    all c : Card |
-        inDeck[c] =>
-            not reachable[c, c, Deck.cardOrder]
-    all disj c1, c2 : Card | Deck.cardOrder[c1] != Deck.cardOrder[c2]
+    all c : Card | {
+        inDeck[c] iff ((c not in Player.card) and (c not in Table.revealed))
+        inDeck[c] => not reachable[c, c, Deck.cardOrder]
+        Deck.cardOrder[c] != Deck.top
+    }
 }
 
 pred cardsWellAllocated {
     // TODO - cards should only be in one place (deck/table/hand) at a time
     all c : Card | {
-        c in Table.revealed or
-        inDeck[c] or
-        (one p : Player | { c = p.card })
+        {
+            c in Table.revealed or
+            inDeck[c] or
+            (one p : Player | { c = p.card })
+        }
         no disj p1, p2 : Player | { p1.card = p2.card }
         not (c in Table.revealed and inDeck[c])
         not (inDeck[c] and (some p : Player | { c = p.card }))
@@ -166,17 +169,26 @@ pred cardsWellAllocated {
     }
 }
 
+pred playerOrderValid {
+    all p1, p2 : Player | {
+        reachable[p2, p1, Table.playerOrder]
+    }
+}
+
 pred wellformed {
     cardsWellAllocated
     deckWellformed
+    playerOrderValid
     always { targetValid and actionValid and challengeValid and reactionValid and reactionChallengeValid }
 }
 
 pred init {
     wellformed
     #{ Table.revealed } = #{ Player }
-    #{ Player } = #{ Table.playerOrder }
-    all p : Player | p.money = 2
+    all p : Player | {
+        p.money = 2
+        some p.card
+    }
 }
 
 pred playerDies[p : Player] {
@@ -316,15 +328,19 @@ pred trans {
     }   
 }
 
+pred onlyStealOrDoNothing {
+    always { GameState.action = Steal or GameState.action = DoNothing }
+}
+
 pred traces {
     init
     always trans
+    onlyStealOrDoNothing
 }
 
 run {
-    init
-    always traces
+    traces
     #{ c : Card | c.role = Ambassador } = 3
     #{ c : Card | c.role = Captain } = 3
     #{ c : Card | c.role = Duke } = 3
-} for exactly 9 Card, exactly 1 Player
+} for exactly 9 Card, exactly 2 Player
