@@ -1,6 +1,9 @@
 #lang forge "final" "SRl35bTBypTIZWmm"
 
 option problem_type temporal
+// VERY IMPORTANT
+option max_tracelength 10
+
 
 // role
 abstract sig Role {}
@@ -51,7 +54,6 @@ one sig GameState {
     var challenge : lone Player,
     var reaction : lone Reaction,
     var reactionChallenge : lone Player
-    // this is going to be the batshit crazy pred
 }
 
 // use inst optimizer to set board state for evaluating strategies
@@ -59,7 +61,6 @@ one sig GameState {
 // Strategy sig that represents player A's decision to quantify over
 
 // pred GameState[targetPlayer : lone Player, action : one Action, challenge : lone Player, reactionChallenge : lone Player]
-
 // maybe say every possible GameState exists so you can quantify over them (PROBABLY TOO MANY)
 
 one sig Table {
@@ -111,8 +112,11 @@ pred inDeck[c : Card] {
 
 
 pred blockerValid {
+    // adding coup here, which we should do, makes it UNSAT
+    // some GameState.blockingPlayer iff (some GameState.reaction or GameState.action = Coup)
     some GameState.blockingPlayer iff some GameState.reaction
     some GameState.blockingPlayer => {
+        // GameState.action = Steal or GameState.action = Tax or GameState.action = Coup
         GameState.action = Steal or GameState.action = Tax
         isAlive[GameState.blockingPlayer]
         GameState.blockingPlayer != Table.currentPlayer
@@ -158,7 +162,6 @@ pred reactionChallengeValid {
 pred deckWellformed {
     // TODO - make sure deck is well-formed 
     all c : Card | {
-        inDeck[c] iff ((c not in Player.card) and (c not in Table.revealed))
         inDeck[c] => not reachable[c, c, Deck.cardOrder]
         Deck.cardOrder[c] != Deck.top
     }
@@ -167,15 +170,22 @@ pred deckWellformed {
 pred cardsWellAllocated {
     // TODO - cards should only be in one place (deck/table/hand) at a time
     all c : Card | {
+        // all cards are either in the deck, revealed, or in a player's hand
         {
             c in Table.revealed or
-            inDeck[c] or
-            (one p : Player | { c = p.card })
+            c in Player.card or
+            inDeck[c]
         }
-        no disj p1, p2 : Player | { p1.card = p2.card }
-        not (c in Table.revealed and inDeck[c])
-        not (inDeck[c] and (some p : Player | { c = p.card }))
-        not (c in Table.revealed and (some p : Player | { c = p.card }))
+        // no two players have the same card
+        all disj p1, p2 : Player | { p1.card != p2.card }
+        // not both revealed and in the deck
+        not ((c in Table.revealed) and inDeck[c])
+        // not both in the deck and in a player's hand
+        not ((c in Player.card) and inDeck[c])
+        // not both revealed and in a player's hand
+        not ((c in Table.revealed) and (c in Player.card))
+        // even if unreachable, non-deck cards shouldn't be in cardOrder
+        ((c in Player.card) or (c in Table.revealed)) => no Deck.cardOrder[c] and no (~(Deck.cardOrder))[c]
     }
 }
 
@@ -241,9 +251,8 @@ pred income {
     deckRemainsConstant
     tableRemainsConstant
     all p : Player - Table.currentPlayer | playerRemainsConstant[p]
-
 }
-// foreign aid
+
 pred foreignAid {
     Table.currentPlayer.money' = add[Table.currentPlayer.money, 2]
     Table.currentPlayer.card' = Table.currentPlayer.card
@@ -259,11 +268,11 @@ pred coup {
     Table.currentPlayer.knowledge' = Table.currentPlayer.knowledge
     Table.currentPlayer.money' = subtract[Table.currentPlayer.money, 7]
     playerDies[GameState.blockingPlayer]
+
     deckRemainsConstant
     all p : (Player - (Table.currentPlayer + GameState.blockingPlayer)) | {
         playerRemainsConstant[p]
     }
-
 }
 
 pred steal {
@@ -271,12 +280,6 @@ pred steal {
     Table.currentPlayer.knowledge' = Table.currentPlayer.knowledge
     GameState.blockingPlayer.card' = GameState.blockingPlayer.card
     GameState.blockingPlayer.knowledge' = GameState.blockingPlayer.knowledge
-    deckRemainsConstant
-    tableRemainsConstant
-    all p : (Player - (Table.currentPlayer + GameState.blockingPlayer)) | {
-        playerRemainsConstant[p]
-    }
-
     GameState.blockingPlayer.money <= 1 => {
         let stealMoney = GameState.blockingPlayer.money | {
             Table.currentPlayer.money' = add[Table.currentPlayer.money, stealMoney]
@@ -287,9 +290,14 @@ pred steal {
         Table.currentPlayer.money' = add[Table.currentPlayer.money, 2]
         GameState.blockingPlayer.money'  = subtract[GameState.blockingPlayer.money, 2]
     }
+
+    deckRemainsConstant
+    tableRemainsConstant
+    all p : (Player - (Table.currentPlayer + GameState.blockingPlayer)) | {
+        playerRemainsConstant[p]
+    }
 }
 
-// tax
 pred tax {
     Table.currentPlayer.money' = add[Table.currentPlayer.money, 3]
     Table.currentPlayer.card' = Table.currentPlayer.card
@@ -350,22 +358,15 @@ pred trans {
     }   
 }
 
-pred onlyStealOrDoNothing {
-    always { GameState.action = Steal or GameState.action = DoNothing }
-}
-
-pred exceptExchange {
-    always { GameState.action != Exchange }
-}
-
 pred traces {
+    // FOR DEBUGGING PURPOSES
+    // all p : Player | always no p.knowledge
+
     init
     always trans
-    // onlyStealOrDoNothing
-    // exceptExchange
-    // always { GameState.action != Steal and GameState.action != Exchange }
-    always { GameState.action = Income or GameState.action = Coup or GameState.action = DoNothing }
-    // eventually { GameState.action = Coup }
+    // this correctly produces an income lasso if amount gained each time is 4 (which makes use of negative money)
+    // always { GameState.action = Income or GameState.action = DoNothing }
+    always { GameState.action != Steal and GameState.action != Exchange }
 }
 
 run {
