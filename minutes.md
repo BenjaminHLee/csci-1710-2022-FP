@@ -28,3 +28,11 @@
 "ohoho...greetings" "UNSAT???"
 "this is forge, we don't understand it"
 "this is the first time i've heard my computer fan"
+
+
+// use inst optimizer to set board state for evaluating strategies
+// LTL inst sets for all states - have a phantom state that sets the configuration for the initial state
+// Strategy sig that represents player A's decision to quantify over
+
+// pred GameState[targetPlayer : lone Player, action : one Action, challenge : lone Player, reactionChallenge : lone Player]
+// maybe say every possible GameState exists so you can quantify over them (PROBABLY TOO MANY)
