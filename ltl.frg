@@ -2,7 +2,7 @@
 
 option problem_type temporal
 // VERY IMPORTANT
-option max_tracelength 10
+option max_tracelength 20
 
 abstract sig Role {}
 one sig Duke extends Role {}
@@ -97,7 +97,7 @@ pred inDeck[c : Card] {
 pred targetAndReactingPlayerValid {
     some GameState.targetPlayer iff (GameState.action = Coup or GameState.action = Steal)
     some GameState.targetPlayer => {
-        isAlive[GameState.reactingPlayer]
+        isAlive[GameState.targetPlayer]
         GameState.targetPlayer != Table.currentPlayer
     }
 
@@ -194,8 +194,10 @@ pred wellformed {
 // Game mechanics
 
 pred playerDies[p : Player] {
+    no p.knowledge'
     no p.card'
-    Table.revealed' = Table.revealed' + p.card
+    p.money' = 0
+    Table.revealed' = Table.revealed + p.card
     // remove the player from the rotation
     let prev = Table.playerOrder.p |
         let following = p.(Table.playerOrder) |
@@ -232,6 +234,7 @@ pred coup {
     Table.currentPlayer.card' = Table.currentPlayer.card
     Table.currentPlayer.knowledge' = Table.currentPlayer.knowledge
     Table.currentPlayer.money' = subtract[Table.currentPlayer.money, 7]
+    // Table.currentPlayer.money' = Table.currentPlayer.money
     playerDies[GameState.targetPlayer]
 
     deckRemainsConstant
@@ -322,7 +325,9 @@ pred init {
 }
 
 pred trans {  
-    Table.currentPlayer' = Table.playerOrder[Table.currentPlayer]
+    // Table.currentPlayer' = Table.playerOrder[Table.currentPlayer]
+    Table.currentPlayer' = (Table.playerOrder')[Table.currentPlayer]
+    
 
     GameState.action = DoNothing => allRemainsConstant else {
 
@@ -365,8 +370,16 @@ pred trans {
 pred traces {
     init
     always trans
+    // GameState.action = Steal
+    // some GameState.challenge
+    // eventually {some p : Player | playerDies[p]}
+    // always { no GameState.reaction }
+    // eventually { some GameState.challenge }
+    eventually { GameState.action = DoNothing }
+    // always { GameState.action != Exchange and GameState.action != Steal }
+    // always { GameState.action = Income or GameState.action = ForeignAid or GameState.action = Tax }
     // always { GameState.action = Tax or GameState.action = DoNothing }
-    always { GameState.action = Tax or GameState.action = Coup or GameState.action = DoNothing }
+    // always { GameState.action = Tax or GameState.action = Coup or GameState.action = DoNothing }
 }
 
 run {
