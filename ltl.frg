@@ -120,6 +120,7 @@ pred actionValid {
     // Table.currentPlayer.money >= 10 => GameState.action = Coup
 }
 
+// challenges only happen when a player challenges themself after winning (doNothing)
 pred challengeValid {
     some GameState.challenge => {
         // the action has to be "challengable"
@@ -215,9 +216,9 @@ pred replaceCard[p : Player] {
 }
 
 pred challengeSucceeds {
-    GameState.action = Exchange and Table.currentPlayer.card.role != Ambassador
-    GameState.action = Steal and Table.currentPlayer.card.role != Captain
-    GameState.action = Tax and Table.currentPlayer.card.role != Duke
+    ((GameState.action = Exchange and Table.currentPlayer.card.role != Ambassador) or
+        (GameState.action = Steal and Table.currentPlayer.card.role != Captain) or
+        (GameState.action = Tax and Table.currentPlayer.card.role != Duke))
 }
 
 pred reactionChallengeSucceeds {
@@ -234,7 +235,6 @@ pred coup {
     Table.currentPlayer.card' = Table.currentPlayer.card
     Table.currentPlayer.knowledge' = Table.currentPlayer.knowledge
     Table.currentPlayer.money' = subtract[Table.currentPlayer.money, 7]
-    // Table.currentPlayer.money' = Table.currentPlayer.money
     playerDies[GameState.targetPlayer]
 
     deckRemainsConstant
@@ -324,58 +324,68 @@ pred init {
     }
 }
 
-pred trans {  
+pred trans {
+    // WRONG because the next player can die
     // Table.currentPlayer' = Table.playerOrder[Table.currentPlayer]
-    Table.currentPlayer' = (Table.playerOrder')[Table.currentPlayer]
+    // WRONG because currentPlayer can die
+    // Table.currentPlayer' = (Table.playerOrder')[Table.currentPlayer]
+
+    Table.currentPlayer in (Player.(Table.playerOrder') + (Table.playerOrder').Player) => {
+        // if the current player remains alive (the next player might die)
+        Table.currentPlayer' = (Table.playerOrder')[Table.currentPlayer]
+    } else {
+        // if the current player dies
+        Table.currentPlayer' = Table.playerOrder[Table.currentPlayer]
+    }
     
-
-    GameState.action = DoNothing => allRemainsConstant else {
-
-        (some GameState.challenge and challengeSucceeds) => {
-            // Challenge succeeds; no action
-            playerDies[Table.currentPlayer]
-            deckRemainsConstant
-            all p : Player | (p != Table.currentPlayer) => playerRemainsConstant[p]
+    (some GameState.challenge and challengeSucceeds) => {
+        // Challenge succeeds; no action
+        playerDies[Table.currentPlayer]
+        deckRemainsConstant
+        all p : Player | (p != Table.currentPlayer) => playerRemainsConstant[p]
+    } 
+    else {
+        // No successful challenge
+        (some GameState.challenge and not challengeSucceeds) => {
+            // challenged unsuccessfully; continue to block challenge check
+            playerDies[GameState.challenge]
+            // replace card
+            replaceCard[Table.currentPlayer]
+        }
+        (some GameState.reactionChallenge and reactionChallengeSucceeds) => {
+            // Action attempted to block; block was successfully challenged
+            playerDies[GameState.reactingPlayer]
+            // Action goes through
+            doAction
         } else {
-            // No successful challenge
-            (some GameState.challenge and not challengeSucceeds) => {
-                // challenged unsuccessfully; continue to block challenge check
-                playerDies[GameState.challenge]
+            (some GameState.reactionChallenge and not reactionChallengeSucceeds) => {
+                // block was challenged unsuccessfully; continue to action
+                playerDies[GameState.reactionChallenge]
                 // replace card
-                replaceCard[Table.currentPlayer]
+                replaceCard[GameState.reactingPlayer]
             }
-            (some GameState.reactionChallenge and reactionChallengeSucceeds) => {
-                // Action attempted to block; block was successfully challenged
-                playerDies[GameState.reactingPlayer]
-                // Action goes through
-                doAction
+            some GameState.reaction => {
+                allRemainsConstant 
             } else {
-                (some GameState.reactionChallenge and not reactionChallengeSucceeds) => {
-                    // block was challenged unsuccessfully; continue to action
-                    playerDies[GameState.reactionChallenge]
-                    // replace card
-                    replaceCard[GameState.reactingPlayer]
-                }
-                some GameState.reaction => {
-                    allRemainsConstant 
-                } else {
-                    // action goes through
-                    doAction
-                }
+                // action goes through
+                doAction
             }
         }
-    }   
+    }
 }
 
 pred traces {
     init
     always trans
+    GameState.action = Tax
+    some GameState.challenge and not challengeSucceeds
+
     // GameState.action = Steal
     // some GameState.challenge
     // eventually {some p : Player | playerDies[p]}
     // always { no GameState.reaction }
     // eventually { some GameState.challenge }
-    eventually { GameState.action = DoNothing }
+    // eventually { GameState.action = DoNothing }
     // always { GameState.action != Exchange and GameState.action != Steal }
     // always { GameState.action = Income or GameState.action = ForeignAid or GameState.action = Tax }
     // always { GameState.action = Tax or GameState.action = DoNothing }
