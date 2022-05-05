@@ -83,7 +83,7 @@ pred allRemainsConstant {
 
 // checks whether the player is anywhere in the playerOrder relation, even if not well-formed
 pred isAlive[p : Player] {
-    p in (Player.(Table.playerOrder) + (Table.playerOrder).Player)
+    p in Table.playerOrder.Player
 }
 
 pred inDeck[c : Card] {
@@ -195,9 +195,9 @@ pred wellformed {
 // Game mechanics
 
 pred playerDies[p : Player] {
-    no p.knowledge'
+    // no p.knowledge'
     no p.card'
-    p.money' = 0
+    // p.money' = 0
     Table.revealed' = Table.revealed + p.card
     // remove the player from the rotation
     let prev = Table.playerOrder.p |
@@ -210,7 +210,7 @@ pred replaceCard[p : Player] {
         let secondCard = Deck.cardOrder[Deck.top] |
             let lastCard = {c : Card | inDeck[c] and no Deck.cardOrder[c]} | {
                 Deck.top' = secondCard
-                Deck.cardOrder' = Deck.cardOrder - topCard->secondCard + lastCard->(p.card)
+                Deck.cardOrder' = (Deck.cardOrder - topCard->secondCard) + lastCard->(p.card)
                 p.card' = topCard
             }
 }
@@ -258,25 +258,25 @@ pred foreignAid {
     Table.currentPlayer.card' = Table.currentPlayer.card
     Table.currentPlayer.knowledge' = Table.currentPlayer.knowledge
 
-    deckRemainsConstant
-    tableRemainsConstant
-    all p : Player - Table.currentPlayer | playerRemainsConstant[p]
+    { no p : Player | replaceCard[p] } => deckRemainsConstant
+    { no p : Player | playerDies[p] } => tableRemainsConstant
+    all p : Player - (Table.currentPlayer + GameState.reactingPlayer + GameState.reactionChallenge) | playerRemainsConstant[p]
 }
 
 pred tax {
     Table.currentPlayer.money' = add[Table.currentPlayer.money, 3]
-    Table.currentPlayer.card' = Table.currentPlayer.card
+    { not replaceCard[Table.currentPlayer] } => Table.currentPlayer.card' = Table.currentPlayer.card
     Table.currentPlayer.knowledge' = Table.currentPlayer.knowledge
     
-    deckRemainsConstant
-    tableRemainsConstant
-    all p : Player - Table.currentPlayer | playerRemainsConstant[p]
+    { no p : Player | replaceCard[p] } => deckRemainsConstant
+    { no p : Player | playerDies[p] } => tableRemainsConstant
+    all p : Player - (Table.currentPlayer + GameState.challenge) | playerRemainsConstant[p]
 }
 
 pred steal {
-    Table.currentPlayer.card' = Table.currentPlayer.card
+    { not replaceCard[Table.currentPlayer] } => Table.currentPlayer.card' = Table.currentPlayer.card
     Table.currentPlayer.knowledge' = Table.currentPlayer.knowledge
-    GameState.targetPlayer.card' = GameState.targetPlayer.card
+    { not replaceCard[GameState.targetPlayer] } => GameState.targetPlayer.card' = GameState.targetPlayer.card
     GameState.targetPlayer.knowledge' = GameState.targetPlayer.knowledge
     GameState.targetPlayer.money <= 1 => {
         let stealMoney = GameState.targetPlayer.money | {
@@ -289,9 +289,9 @@ pred steal {
         GameState.targetPlayer.money'  = subtract[GameState.targetPlayer.money, 2]
     }
 
-    deckRemainsConstant
-    tableRemainsConstant
-    all p : (Player - (Table.currentPlayer + GameState.targetPlayer)) | {
+    { no p : Player | replaceCard[p] } => deckRemainsConstant
+    { no p : Player | playerDies[p] } => tableRemainsConstant
+    all p : (Player - (Table.currentPlayer + GameState.targetPlayer + GameState.challenge + GameState.reactionChallenge)) | {
         playerRemainsConstant[p]
     }
 }
@@ -330,12 +330,17 @@ pred trans {
     // WRONG because currentPlayer can die
     // Table.currentPlayer' = (Table.playerOrder')[Table.currentPlayer]
 
-    Table.currentPlayer in (Player.(Table.playerOrder') + (Table.playerOrder').Player) => {
-        // if the current player remains alive (the next player might die)
-        Table.currentPlayer' = (Table.playerOrder')[Table.currentPlayer]
-    } else {
-        // if the current player dies
+    Table.currentPlayer not in (Table.playerOrder').Player => {
+        // the current player dies
         Table.currentPlayer' = Table.playerOrder[Table.currentPlayer]
+    } else {
+        // the next player dies
+        Table.playerOrder[Table.currentPlayer] not in (Table.playerOrder').Player => {
+            Table.currentPlayer' = Table.playerOrder[Table.playerOrder[Table.currentPlayer]]
+        } else {
+            // anyone else may or may not have died
+            Table.currentPlayer' = Table.playerOrder[Table.currentPlayer]
+        }
     }
     
     (some GameState.challenge and challengeSucceeds) => {
@@ -374,11 +379,15 @@ pred trans {
     }
 }
 
+pred numCards {
+    #{ c : Card | c.role = Ambassador } = 3
+    #{ c : Card | c.role = Captain } = 3
+    #{ c : Card | c.role = Duke } = 3
+}
+
 pred traces {
     init
     always trans
-    GameState.action = Tax
-    some GameState.challenge and not challengeSucceeds
 
     // GameState.action = Steal
     // some GameState.challenge
@@ -392,9 +401,52 @@ pred traces {
     // always { GameState.action = Tax or GameState.action = Coup or GameState.action = DoNothing }
 }
 
+test expect {
+    incomeNoPlayerDies: {
+        (traces and numCards and income) 
+            => (deckRemainsConstant and tableRemainsConstant and (no p : Player | playerDies[p] or replaceCard[p]))
+    } for exactly 9 Card, exactly 2 Player, 5 Int is theorem
+
+    canEndGame: {
+        traces
+        numCards
+        eventually { GameState.action = DoNothing }
+    } for exactly 9 Card, exactly 2 Player, 5 Int is sat
+
+    canEventuallyCoup: {
+        traces
+        numCards
+        eventually { GameState.action = Coup }
+    } for exactly 9 Card, exactly 2 Player, 5 Int is sat
+    
+    canSucceedChallenge: {
+        traces
+        numCards
+        some GameState.challenge and challengeSucceeds
+    } for exactly 9 Card, exactly 2 Player, 5 Int is sat
+
+    canFailChallenge: {
+        traces
+        numCards
+        some GameState.challenge and not challengeSucceeds
+    } for exactly 9 Card, exactly 2 Player, 5 Int is sat
+
+    canSucceedReactionChallenge: {
+        traces
+        numCards
+        some GameState.reactionChallenge and reactionChallengeSucceeds
+    } for exactly 9 Card, exactly 2 Player, 5 Int is sat
+
+    canFailReactionChallenge: {
+        traces
+        numCards
+        some GameState.reactionChallenge and not reactionChallengeSucceeds
+    } for exactly 9 Card, exactly 2 Player, 5 Int is sat
+}
+
 run {
     traces
-    #{ c : Card | c.role = Ambassador } = 3
-    #{ c : Card | c.role = Captain } = 3
-    #{ c : Card | c.role = Duke } = 3
+    numCards
+    GameState.action = Tax
+    some GameState.challenge and not challengeSucceeds
 } for exactly 9 Card, exactly 2 Player, 5 Int
