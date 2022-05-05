@@ -145,7 +145,11 @@ pred reactionChallengeValid {
     some GameState.reactionChallenge => {
         some GameState.reaction
         isAlive[GameState.reactionChallenge]
-        GameState.reactionChallenge != Table.currentPlayer
+        // This is WRONG
+        // GameState.reactionChallenge != Table.currentPlayer
+        GameState.reactionChallenge != GameState.reactingPlayer
+        // we allow someone to both block steal and challenge
+        // we allow the other person to still challenge the block, even if the original challenge was correct
     }
 }
 
@@ -447,6 +451,5 @@ test expect {
 run {
     traces
     numCards
-    GameState.action = Tax
-    some GameState.challenge and not challengeSucceeds
+    eventually { some GameState.reactionChallenge and not reactionChallengeSucceeds }
 } for exactly 9 Card, exactly 2 Player, 5 Int
