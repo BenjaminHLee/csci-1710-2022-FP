@@ -33,8 +33,7 @@ one sig BlockForeignAid extends Reaction {}
 one sig BlockStealWithAmbassador extends Reaction {}
 one sig BlockStealWithCaptain extends Reaction {}
 
-// rename to not have State
-one sig GameState {
+one sig ActionSet {
     var targetPlayer : lone Player,
     var reactingPlayer : lone Player,
     var action : one Action,
@@ -95,59 +94,59 @@ pred inDeck[c : Card] {
 // Wellformedness checks
 
 pred targetAndReactingPlayerValid {
-    some GameState.targetPlayer iff (GameState.action = Coup or GameState.action = Steal)
-    some GameState.targetPlayer => {
-        isAlive[GameState.targetPlayer]
-        GameState.targetPlayer != Table.currentPlayer
+    some ActionSet.targetPlayer iff (ActionSet.action = Coup or ActionSet.action = Steal)
+    some ActionSet.targetPlayer => {
+        isAlive[ActionSet.targetPlayer]
+        ActionSet.targetPlayer != Table.currentPlayer
     }
 
-    some GameState.reactingPlayer iff some GameState.reaction
-    some GameState.reactingPlayer => {
-        GameState.action = Steal or GameState.action = ForeignAid
-        isAlive[GameState.reactingPlayer]
-        GameState.reactingPlayer != Table.currentPlayer
+    some ActionSet.reactingPlayer iff some ActionSet.reaction
+    some ActionSet.reactingPlayer => {
+        ActionSet.action = Steal or ActionSet.action = ForeignAid
+        isAlive[ActionSet.reactingPlayer]
+        ActionSet.reactingPlayer != Table.currentPlayer
     }
 
     // case where targetPlayer and reactingPlayer are the same
-    (GameState.action = Steal and some GameState.reactingPlayer) 
-        => GameState.reactingPlayer = GameState.targetPlayer
+    (ActionSet.action = Steal and some ActionSet.reactingPlayer) 
+        => ActionSet.reactingPlayer = ActionSet.targetPlayer
 }
 
 pred actionValid {
-    GameState.action = DoNothing iff #{ Table.playerOrder } = 1
-    GameState.action = Coup => Table.currentPlayer.money >= 7
+    ActionSet.action = DoNothing iff #{ Table.playerOrder } = 1
+    ActionSet.action = Coup => Table.currentPlayer.money >= 7
     // must coup if above 10 coins
-    // Table.currentPlayer.money >= 10 => GameState.action = Coup
+    // Table.currentPlayer.money >= 10 => ActionSet.action = Coup
 }
 
 // challenges only happen when a player challenges themself after winning (doNothing)
 pred challengeValid {
-    some GameState.challenge => {
+    some ActionSet.challenge => {
         // the action has to be "challengable"
-        (GameState.action = Exchange or
-            GameState.action = Steal or
-            GameState.action = Tax)
-        isAlive[GameState.challenge]
-        GameState.challenge != Table.currentPlayer
+        (ActionSet.action = Exchange or
+            ActionSet.action = Steal or
+            ActionSet.action = Tax)
+        isAlive[ActionSet.challenge]
+        ActionSet.challenge != Table.currentPlayer
     }
 }
 
 pred reactionValid {
-    some GameState.reaction => {
-        (GameState.action = ForeignAid and GameState.reaction = BlockForeignAid) or 
-        (GameState.action = Steal and 
-            (GameState.reaction = BlockStealWithAmbassador or 
-             GameState.reaction = BlockStealWithCaptain))
+    some ActionSet.reaction => {
+        (ActionSet.action = ForeignAid and ActionSet.reaction = BlockForeignAid) or 
+        (ActionSet.action = Steal and 
+            (ActionSet.reaction = BlockStealWithAmbassador or 
+             ActionSet.reaction = BlockStealWithCaptain))
     }
 }
 
 pred reactionChallengeValid {
-    some GameState.reactionChallenge => {
-        some GameState.reaction
-        isAlive[GameState.reactionChallenge]
+    some ActionSet.reactionChallenge => {
+        some ActionSet.reaction
+        isAlive[ActionSet.reactionChallenge]
         // This is WRONG
-        // GameState.reactionChallenge != Table.currentPlayer
-        GameState.reactionChallenge != GameState.reactingPlayer
+        // ActionSet.reactionChallenge != Table.currentPlayer
+        ActionSet.reactionChallenge != ActionSet.reactingPlayer
         // we allow someone to both block steal and challenge
         // we allow the other person to still challenge the block, even if the original challenge was correct
     }
@@ -220,15 +219,15 @@ pred replaceCard[p : Player] {
 }
 
 pred challengeSucceeds {
-    ((GameState.action = Exchange and Table.currentPlayer.card.role != Ambassador) or
-        (GameState.action = Steal and Table.currentPlayer.card.role != Captain) or
-        (GameState.action = Tax and Table.currentPlayer.card.role != Duke))
+    ((ActionSet.action = Exchange and Table.currentPlayer.card.role != Ambassador) or
+        (ActionSet.action = Steal and Table.currentPlayer.card.role != Captain) or
+        (ActionSet.action = Tax and Table.currentPlayer.card.role != Duke))
 }
 
 pred reactionChallengeSucceeds {
-    ((GameState.reaction = BlockStealWithAmbassador and GameState.reactingPlayer.card.role != Ambassador) or
-        (GameState.reaction = BlockStealWithCaptain and GameState.reactingPlayer.card.role != Captain) or
-        (GameState.reaction = BlockForeignAid and GameState.reactingPlayer.card.role != Duke))
+    ((ActionSet.reaction = BlockStealWithAmbassador and ActionSet.reactingPlayer.card.role != Ambassador) or
+        (ActionSet.reaction = BlockStealWithCaptain and ActionSet.reactingPlayer.card.role != Captain) or
+        (ActionSet.reaction = BlockForeignAid and ActionSet.reactingPlayer.card.role != Duke))
 }
 
 
@@ -239,10 +238,10 @@ pred coup {
     Table.currentPlayer.card' = Table.currentPlayer.card
     Table.currentPlayer.knowledge' = Table.currentPlayer.knowledge
     Table.currentPlayer.money' = subtract[Table.currentPlayer.money, 7]
-    playerDies[GameState.targetPlayer]
+    playerDies[ActionSet.targetPlayer]
 
     deckRemainsConstant
-    all p : (Player - (Table.currentPlayer + GameState.targetPlayer)) | {
+    all p : (Player - (Table.currentPlayer + ActionSet.targetPlayer)) | {
         playerRemainsConstant[p]
     }
 }
@@ -264,7 +263,7 @@ pred foreignAid {
 
     { no p : Player | replaceCard[p] } => deckRemainsConstant
     { no p : Player | playerDies[p] } => tableRemainsConstant
-    all p : Player - (Table.currentPlayer + GameState.reactingPlayer + GameState.reactionChallenge) | playerRemainsConstant[p]
+    all p : Player - (Table.currentPlayer + ActionSet.reactingPlayer + ActionSet.reactionChallenge) | playerRemainsConstant[p]
 }
 
 pred tax {
@@ -274,28 +273,28 @@ pred tax {
     
     { no p : Player | replaceCard[p] } => deckRemainsConstant
     { no p : Player | playerDies[p] } => tableRemainsConstant
-    all p : Player - (Table.currentPlayer + GameState.challenge) | playerRemainsConstant[p]
+    all p : Player - (Table.currentPlayer + ActionSet.challenge) | playerRemainsConstant[p]
 }
 
 pred steal {
     { not replaceCard[Table.currentPlayer] } => Table.currentPlayer.card' = Table.currentPlayer.card
     Table.currentPlayer.knowledge' = Table.currentPlayer.knowledge
-    { not replaceCard[GameState.targetPlayer] } => GameState.targetPlayer.card' = GameState.targetPlayer.card
-    GameState.targetPlayer.knowledge' = GameState.targetPlayer.knowledge
-    GameState.targetPlayer.money <= 1 => {
-        let stealMoney = GameState.targetPlayer.money | {
+    { not replaceCard[ActionSet.targetPlayer] } => ActionSet.targetPlayer.card' = ActionSet.targetPlayer.card
+    ActionSet.targetPlayer.knowledge' = ActionSet.targetPlayer.knowledge
+    ActionSet.targetPlayer.money <= 1 => {
+        let stealMoney = ActionSet.targetPlayer.money | {
             Table.currentPlayer.money' = add[Table.currentPlayer.money, stealMoney]
-            GameState.targetPlayer.money'  = subtract[GameState.targetPlayer.money, stealMoney]
+            ActionSet.targetPlayer.money'  = subtract[ActionSet.targetPlayer.money, stealMoney]
         }
     }
-    GameState.targetPlayer.money >= 2 => {
+    ActionSet.targetPlayer.money >= 2 => {
         Table.currentPlayer.money' = add[Table.currentPlayer.money, 2]
-        GameState.targetPlayer.money'  = subtract[GameState.targetPlayer.money, 2]
+        ActionSet.targetPlayer.money'  = subtract[ActionSet.targetPlayer.money, 2]
     }
 
     { no p : Player | replaceCard[p] } => deckRemainsConstant
     { no p : Player | playerDies[p] } => tableRemainsConstant
-    all p : (Player - (Table.currentPlayer + GameState.targetPlayer + GameState.challenge + GameState.reactionChallenge)) | {
+    all p : (Player - (Table.currentPlayer + ActionSet.targetPlayer + ActionSet.challenge + ActionSet.reactionChallenge)) | {
         playerRemainsConstant[p]
     }
 }
@@ -306,13 +305,13 @@ pred exchange {
 }
 
 pred doAction {
-    GameState.action = Coup => coup
-    GameState.action = Income => income
-    GameState.action = ForeignAid => foreignAid
-    GameState.action = Tax => tax
-    GameState.action = Steal => steal
-    GameState.action = Exchange => exchange
-    GameState.action = DoNothing => allRemainsConstant
+    ActionSet.action = Coup => coup
+    ActionSet.action = Income => income
+    ActionSet.action = ForeignAid => foreignAid
+    ActionSet.action = Tax => tax
+    ActionSet.action = Steal => steal
+    ActionSet.action = Exchange => exchange
+    ActionSet.action = DoNothing => allRemainsConstant
 }
 
 
@@ -347,7 +346,7 @@ pred trans {
         }
     }
     
-    (some GameState.challenge and challengeSucceeds) => {
+    (some ActionSet.challenge and challengeSucceeds) => {
         // Challenge succeeds; no action
         playerDies[Table.currentPlayer]
         deckRemainsConstant
@@ -355,25 +354,25 @@ pred trans {
     } 
     else {
         // No successful challenge
-        (some GameState.challenge and not challengeSucceeds) => {
+        (some ActionSet.challenge and not challengeSucceeds) => {
             // challenged unsuccessfully; continue to block challenge check
-            playerDies[GameState.challenge]
+            playerDies[ActionSet.challenge]
             // replace card
             replaceCard[Table.currentPlayer]
         }
-        (some GameState.reactionChallenge and reactionChallengeSucceeds) => {
+        (some ActionSet.reactionChallenge and reactionChallengeSucceeds) => {
             // Action attempted to block; block was successfully challenged
-            playerDies[GameState.reactingPlayer]
+            playerDies[ActionSet.reactingPlayer]
             // Action goes through
             doAction
         } else {
-            (some GameState.reactionChallenge and not reactionChallengeSucceeds) => {
+            (some ActionSet.reactionChallenge and not reactionChallengeSucceeds) => {
                 // block was challenged unsuccessfully; continue to action
-                playerDies[GameState.reactionChallenge]
+                playerDies[ActionSet.reactionChallenge]
                 // replace card
-                replaceCard[GameState.reactingPlayer]
+                replaceCard[ActionSet.reactingPlayer]
             }
-            some GameState.reaction => {
+            some ActionSet.reaction => {
                 allRemainsConstant 
             } else {
                 // action goes through
@@ -393,16 +392,16 @@ pred traces {
     init
     always trans
 
-    // GameState.action = Steal
-    // some GameState.challenge
+    // ActionSet.action = Steal
+    // some ActionSet.challenge
     // eventually {some p : Player | playerDies[p]}
-    // always { no GameState.reaction }
-    // eventually { some GameState.challenge }
-    // eventually { GameState.action = DoNothing }
-    // always { GameState.action != Exchange and GameState.action != Steal }
-    // always { GameState.action = Income or GameState.action = ForeignAid or GameState.action = Tax }
-    // always { GameState.action = Tax or GameState.action = DoNothing }
-    // always { GameState.action = Tax or GameState.action = Coup or GameState.action = DoNothing }
+    // always { no ActionSet.reaction }
+    // eventually { some ActionSet.challenge }
+    // eventually { ActionSet.action = DoNothing }
+    // always { ActionSet.action != Exchange and ActionSet.action != Steal }
+    // always { ActionSet.action = Income or ActionSet.action = ForeignAid or ActionSet.action = Tax }
+    // always { ActionSet.action = Tax or ActionSet.action = DoNothing }
+    // always { ActionSet.action = Tax or ActionSet.action = Coup or ActionSet.action = DoNothing }
 }
 
 test expect {
@@ -414,42 +413,42 @@ test expect {
     canEndGame: {
         traces
         numCards
-        eventually { GameState.action = DoNothing }
+        eventually { ActionSet.action = DoNothing }
     } for exactly 9 Card, exactly 2 Player, 5 Int is sat
 
     canEventuallyCoup: {
         traces
         numCards
-        eventually { GameState.action = Coup }
+        eventually { ActionSet.action = Coup }
     } for exactly 9 Card, exactly 2 Player, 5 Int is sat
     
     canSucceedChallenge: {
         traces
         numCards
-        some GameState.challenge and challengeSucceeds
+        some ActionSet.challenge and challengeSucceeds
     } for exactly 9 Card, exactly 2 Player, 5 Int is sat
 
     canFailChallenge: {
         traces
         numCards
-        some GameState.challenge and not challengeSucceeds
+        some ActionSet.challenge and not challengeSucceeds
     } for exactly 9 Card, exactly 2 Player, 5 Int is sat
 
     canSucceedReactionChallenge: {
         traces
         numCards
-        some GameState.reactionChallenge and reactionChallengeSucceeds
+        some ActionSet.reactionChallenge and reactionChallengeSucceeds
     } for exactly 9 Card, exactly 2 Player, 5 Int is sat
 
     canFailReactionChallenge: {
         traces
         numCards
-        some GameState.reactionChallenge and not reactionChallengeSucceeds
+        some ActionSet.reactionChallenge and not reactionChallengeSucceeds
     } for exactly 9 Card, exactly 2 Player, 5 Int is sat
 }
 
 run {
     traces
     numCards
-    eventually { some GameState.reactionChallenge and not reactionChallengeSucceeds }
-} for exactly 9 Card, exactly 2 Player, 5 Int
+    eventually { ActionSet.action = Coup }
+} for exactly 9 Card, exactly 3 Player, 5 Int

@@ -21,11 +21,6 @@ function draw(idx) {
     nextbtn.innerHTML = "Next";
     nextbtn.onclick = nextClick;
     maindiv.appendChild(nextbtn);
-    
-    const playerTable = getElem("playerTable", "table");
-    maindiv.appendChild(playerTable);
-    const revealedTable = getElem("revealedTable", "table");
-    maindiv.appendChild(revealedTable);
     createInstVis(allInstJson[idx]);
 }
 draw(0);
@@ -34,6 +29,7 @@ function getElem(eid, tp) {
     if (!el) {
         el = document.createElement(tp);
         el.id = eid;
+        maindiv.appendChild(el);
     }
     return el;
 }
@@ -87,46 +83,87 @@ function createInstVis(instJson) {
     }
 
     const playerTable = getElem("playerTable", "table");
-    createTable(playerTable, "Players", ["Player", "Card", "Role", "Money"], instJson.players);
+    createTable(playerTable, "Players", ["Player", "Card", "Role", "Money", "Current"], instJson.players);
 
     const revealedTable = getElem("revealedTable", "table");
-    createTable(revealedTable, "Revealed", ["Card", "Role"], instJson.revealed)
+    createTable(revealedTable, "Revealed", ["Card", "Role"], instJson.revealed);
+
+    const actionSetTable = getElem("actionSetTable", "table");
+    createTable(actionSetTable, "Action Set", ["Action", "Target Player", "Challenge", "Reaction", 
+        "Reacting Player", "Reaction Challenge"], [instJson.actionSet]);
 }
 
 function instanceToJson(inst) {
-    const players = inst.signature('Player').atoms();
-    const playerCard = inst.field('card');
-    const playerMoney = inst.field('money');
-    const cardRole = inst.field('role');
+    const playerSig = inst.signature('Player').atoms();
+    const playerCardField = inst.field('card');
+    const playerMoneyField = inst.field('money');
+    const cardRoleField = inst.field('role');
 
-    const table = inst.signature('Table').atoms()[0];
-    const tableRevealed = inst.field('revealed');
+    const tableSig = inst.signature('Table').atoms()[0];
+    const tableRevealedField = inst.field('revealed');
+    const tableCurrentPlayerField = inst.field('currentPlayer');
+    // const tablePlayerOrderField = inst.field('playerOrder');
+
+    const actionSetSig = inst.signature('ActionSet').atoms()[0];
+    const actionField = inst.field('action');
+    const targetPlayerField = inst.field('targetPlayer');
+    const challengeField = inst.field('challenge');
+    const reactionField = inst.field('reaction');
+    const reactingPlayerField = inst.field('reactingPlayer');
+    const reactionChallengeField = inst.field('reactionChallenge');
 
     const getPlayerFields = (player) => {
-        const card = firstCol(player.join(playerCard));
-        const role = firstCol(player.join(playerCard).join(cardRole));
-        const money = firstCol(player.join(playerMoney));
+        const isCurrentPlayer = (player.id() === first(tableSig.join(tableCurrentPlayerField)));
         return {
             name: player.id(),
-            card: card,
-            role: role,
-            money: money,
+            card: first(player.join(playerCardField)),
+            role: first(player.join(playerCardField).join(cardRoleField)),
+            money: first(player.join(playerMoneyField)),
+            isCurrentPlayer: isCurrentPlayer,
         }
     }
-    const allPlayerFields = players.map(getPlayerFields);
+    // const currentPlayer = tableSig.join(tableCurrentPlayerField);
+    // const sortedPlayers = sortByPlayerOrder(currentPlayer, tablePlayerOrderField)
+    // const allPlayerFields = sortedPlayers.map(getPlayerFields);
+    const allPlayerFields = playerSig.map(getPlayerFields);
 
-    const revealedCards = table.join(tableRevealed).tuples().map(e => e.atoms()[0])
+    const revealedCards = tableSig.join(tableRevealedField).tuples().map(e => e.atoms()[0]);
     const revealedFields = revealedCards.map(c => ({
         card: c.id(),
-        role: firstCol(c.join(cardRole))
+        role: first(c.join(cardRoleField)),
     }))
+
+    const actionSetFields = {
+        action: first(actionSetSig.join(actionField)),
+        targetPlayer: first(actionSetSig.join(targetPlayerField)),
+        challenge: first(actionSetSig.join(challengeField)),
+        reaction: first(actionSetSig.join(reactionField)),
+        reactingPlayer: first(actionSetSig.join(reactingPlayerField)),
+        reactionChallenge: first(actionSetSig.join(reactionChallengeField)),
+    }
 
     return {
         players: allPlayerFields,
         revealed: revealedFields,
+        actionSet: actionSetFields,
     }
 }
 
-function firstCol(relation) {
-    return relation.tuples().map(e => e.atoms()[0].id());
+// function sortByPlayerOrder(currentPlayer, playerOrder) {
+//     let sortedPlayers = [];
+//     sortedPlayers.push(currentPlayer);
+//     while (!sortedPlayers.includes(sortedPlayers[sortedPlayers.length-1].join(playerOrder))) {
+//         sortedPlayers.push(sortedPlayers[sortedPlayers.length-1].join(playerOrder));
+//     }
+//     return sortedPlayers;
+// }
+
+function first(relation) {
+    const firstCol = relation.tuples().map(e => e.atoms()[0].id());
+    if (firstCol.length !== 0) {
+        return firstCol[0];
+    } else {
+        // this is to prevent "undefined" from showing up in the table
+        return firstCol;
+    }
 }
