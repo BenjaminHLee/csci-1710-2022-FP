@@ -478,6 +478,8 @@ pred init {
 }
 
 pred trans {
+    (no p : Player | playerDies[p]) => Table.playerOrder' = Table.playerOrder
+
     ActionSet.currentPlayer not in (Table.playerOrder').Player => {
         // the current player dies
         ActionSet.currentPlayer' = Table.playerOrder[ActionSet.currentPlayer]
