@@ -34,18 +34,27 @@ one sig BlockStealWithAmbassador extends Reaction {}
 one sig BlockStealWithCaptain extends Reaction {}
 
 one sig ActionSet {
+    var currentPlayer : one Player,
     var targetPlayer : lone Player,
     var reactingPlayer : lone Player,
     var action : one Action,
     var challenge : lone Player,
     var reaction : lone Reaction,
-    var reactionChallenge : lone Player
+    var reactionChallenge : lone Player,
+    // Lone players corresponding to those that have died
+    var deadActingPlayer : lone Player,
+    var deadTargetPlayer : lone Player,
+    var deadReactingPlayer : lone Player,
+    var deadChallenge : lone Player,
+    var deadReactionChallenge : lone Player,
+    // Lone players corresponding to those that have lost their cards
+    var replacedCardCurrentPlayer : lone Player,
+    var replacedCardBlockingPlayer : lone Player
 }
 
 one sig Table {
     var revealed : set Card,
-    var playerOrder : pfunc Player->Player,
-    var currentPlayer : one Player
+    var playerOrder : pfunc Player->Player
 }
 
 one sig Deck {
@@ -63,8 +72,8 @@ pred deckRemainsConstant {
 }
 
 pred playerRemainsConstant[p: Player] {
-    p.knowledge = p.knowledge'
     p.card = p.card'
+    p.knowledge = p.knowledge'
     p.money = p.money'
 }
 
@@ -97,14 +106,14 @@ pred targetAndReactingPlayerValid {
     some ActionSet.targetPlayer iff (ActionSet.action = Coup or ActionSet.action = Steal)
     some ActionSet.targetPlayer => {
         isAlive[ActionSet.targetPlayer]
-        ActionSet.targetPlayer != Table.currentPlayer
+        ActionSet.targetPlayer != ActionSet.currentPlayer
     }
 
     some ActionSet.reactingPlayer iff some ActionSet.reaction
     some ActionSet.reactingPlayer => {
         ActionSet.action = Steal or ActionSet.action = ForeignAid
         isAlive[ActionSet.reactingPlayer]
-        ActionSet.reactingPlayer != Table.currentPlayer
+        ActionSet.reactingPlayer != ActionSet.currentPlayer
     }
 
     // case where targetPlayer and reactingPlayer are the same
@@ -114,9 +123,9 @@ pred targetAndReactingPlayerValid {
 
 pred actionValid {
     ActionSet.action = DoNothing iff #{ Table.playerOrder } = 1
-    ActionSet.action = Coup => Table.currentPlayer.money >= 7
+    ActionSet.action = Coup => ActionSet.currentPlayer.money >= 7
     // must coup if above 10 coins
-    // Table.currentPlayer.money >= 10 => ActionSet.action = Coup
+    // ActionSet.currentPlayer.money >= 10 => ActionSet.action = Coup
 }
 
 // challenges only happen when a player challenges themself after winning (doNothing)
@@ -127,7 +136,7 @@ pred challengeValid {
             ActionSet.action = Steal or
             ActionSet.action = Tax)
         isAlive[ActionSet.challenge]
-        ActionSet.challenge != Table.currentPlayer
+        ActionSet.challenge != ActionSet.currentPlayer
     }
 }
 
@@ -145,7 +154,7 @@ pred reactionChallengeValid {
         some ActionSet.reaction
         isAlive[ActionSet.reactionChallenge]
         // This is WRONG
-        // ActionSet.reactionChallenge != Table.currentPlayer
+        // ActionSet.reactionChallenge != ActionSet.currentPlayer
         ActionSet.reactionChallenge != ActionSet.reactingPlayer
         // we allow someone to both block steal and challenge
         // we allow the other person to still challenge the block, even if the original challenge was correct
@@ -219,9 +228,9 @@ pred replaceCard[p : Player] {
 }
 
 pred challengeSucceeds {
-    ((ActionSet.action = Exchange and Table.currentPlayer.card.role != Ambassador) or
-        (ActionSet.action = Steal and Table.currentPlayer.card.role != Captain) or
-        (ActionSet.action = Tax and Table.currentPlayer.card.role != Duke))
+    ((ActionSet.action = Exchange and ActionSet.currentPlayer.card.role != Ambassador) or
+        (ActionSet.action = Steal and ActionSet.currentPlayer.card.role != Captain) or
+        (ActionSet.action = Tax and ActionSet.currentPlayer.card.role != Duke))
 }
 
 pred reactionChallengeSucceeds {
@@ -235,66 +244,110 @@ pred reactionChallengeSucceeds {
 // Actions
 
 pred coup {
-    Table.currentPlayer.card' = Table.currentPlayer.card
-    Table.currentPlayer.knowledge' = Table.currentPlayer.knowledge
-    Table.currentPlayer.money' = subtract[Table.currentPlayer.money, 7]
+    // The only person who can die here is the target
+    no ActionSet.deadActingPlayer
+    // no ActionSet.deadTargetPlayer
+    no ActionSet.deadReactingPlayer
+    no ActionSet.deadChallenge
+    no ActionSet.deadReactionChallenge
+
+
+    ActionSet.currentPlayer.card' = ActionSet.currentPlayer.card
+    ActionSet.currentPlayer.knowledge' = ActionSet.currentPlayer.knowledge
+    ActionSet.currentPlayer.money' = subtract[ActionSet.currentPlayer.money, 7]
     playerDies[ActionSet.targetPlayer]
 
     deckRemainsConstant
-    all p : (Player - (Table.currentPlayer + ActionSet.targetPlayer)) | {
+    all p : (Player - (ActionSet.currentPlayer + ActionSet.targetPlayer)) | {
         playerRemainsConstant[p]
     }
 }
 
 pred income {
-    Table.currentPlayer.money' = add[Table.currentPlayer.money, 1]
-    Table.currentPlayer.card' = Table.currentPlayer.card
-    Table.currentPlayer.knowledge' = Table.currentPlayer.knowledge
+    // No person can die because of this action
+    no ActionSet.deadActingPlayer
+    no ActionSet.deadTargetPlayer
+    no ActionSet.deadReactingPlayer
+    no ActionSet.deadChallenge
+    no ActionSet.deadReactionChallenge
+
+    ActionSet.currentPlayer.money' = add[ActionSet.currentPlayer.money, 1]
+    ActionSet.currentPlayer.card' = ActionSet.currentPlayer.card
+    ActionSet.currentPlayer.knowledge' = ActionSet.currentPlayer.knowledge
 
     deckRemainsConstant
     tableRemainsConstant
-    all p : Player - Table.currentPlayer | playerRemainsConstant[p]
+    all p : Player - ActionSet.currentPlayer | playerRemainsConstant[p]
 }
 
-pred foreignAid {
-    Table.currentPlayer.money' = add[Table.currentPlayer.money, 2]
-    Table.currentPlayer.card' = Table.currentPlayer.card
-    Table.currentPlayer.knowledge' = Table.currentPlayer.knowledge
+pred foreignAid { 
+    // No person can die because they played this action
+    // no ActionSet.deadActingPlayer
+    // no ActionSet.deadTargetPlayer
+    no ActionSet.deadReactingPlayer
+    // no ActionSet.deadChallenge
+    no ActionSet.deadReactionChallenge
+
+    ActionSet.currentPlayer.money' = add[ActionSet.currentPlayer.money, 2]
+    ActionSet.currentPlayer.card' = ActionSet.currentPlayer.card
+    ActionSet.currentPlayer.knowledge' = ActionSet.currentPlayer.knowledge
 
     { no p : Player | replaceCard[p] } => deckRemainsConstant
     { no p : Player | playerDies[p] } => tableRemainsConstant
-    all p : Player - (Table.currentPlayer + ActionSet.reactingPlayer + ActionSet.reactionChallenge) | playerRemainsConstant[p]
+
+    let deadPlayers = {
+        ActionSet.deadActingPlayer +
+        ActionSet.deadTargetPlayer +
+        ActionSet.deadReactingPlayer +
+        ActionSet.deadChallenge +
+        ActionSet.deadReactionChallenge
+    } | {
+        all p : Player - (deadPlayers + ActionSet.currentPlayer) | {
+            not replaceCard[p] => playerRemainsConstant[p]
+            p.money' = p.money
+        }
+    }
+    
+    let replacedCardPlayers = {
+        ActionSet.replacedCardCurrentPlayer +
+        ActionSet.replacedCardBlockingPlayer 
+    } | {
+        all p : Player - (replacedCardPlayers + ActionSet.currentPlayer) | {
+            not playerDies[p] => playerRemainsConstant[p]
+            p.money' = p.money
+        }
+    }
 }
 
 pred tax {
-    Table.currentPlayer.money' = add[Table.currentPlayer.money, 3]
-    { not replaceCard[Table.currentPlayer] } => Table.currentPlayer.card' = Table.currentPlayer.card
-    Table.currentPlayer.knowledge' = Table.currentPlayer.knowledge
+    ActionSet.currentPlayer.money' = add[ActionSet.currentPlayer.money, 3]
+    { not replaceCard[ActionSet.currentPlayer] } => ActionSet.currentPlayer.card' = ActionSet.currentPlayer.card
+    ActionSet.currentPlayer.knowledge' = ActionSet.currentPlayer.knowledge
     
     { no p : Player | replaceCard[p] } => deckRemainsConstant
     { no p : Player | playerDies[p] } => tableRemainsConstant
-    all p : Player - (Table.currentPlayer + ActionSet.challenge) | playerRemainsConstant[p]
+    all p : Player - (ActionSet.currentPlayer + ActionSet.challenge) | playerRemainsConstant[p]
 }
 
 pred steal {
-    { not replaceCard[Table.currentPlayer] } => Table.currentPlayer.card' = Table.currentPlayer.card
-    Table.currentPlayer.knowledge' = Table.currentPlayer.knowledge
+    { not replaceCard[ActionSet.currentPlayer] } => ActionSet.currentPlayer.card' = ActionSet.currentPlayer.card
+    ActionSet.currentPlayer.knowledge' = ActionSet.currentPlayer.knowledge
     { not replaceCard[ActionSet.targetPlayer] } => ActionSet.targetPlayer.card' = ActionSet.targetPlayer.card
     ActionSet.targetPlayer.knowledge' = ActionSet.targetPlayer.knowledge
     ActionSet.targetPlayer.money <= 1 => {
         let stealMoney = ActionSet.targetPlayer.money | {
-            Table.currentPlayer.money' = add[Table.currentPlayer.money, stealMoney]
+            ActionSet.currentPlayer.money' = add[ActionSet.currentPlayer.money, stealMoney]
             ActionSet.targetPlayer.money'  = subtract[ActionSet.targetPlayer.money, stealMoney]
         }
     }
     ActionSet.targetPlayer.money >= 2 => {
-        Table.currentPlayer.money' = add[Table.currentPlayer.money, 2]
+        ActionSet.currentPlayer.money' = add[ActionSet.currentPlayer.money, 2]
         ActionSet.targetPlayer.money'  = subtract[ActionSet.targetPlayer.money, 2]
     }
 
     { no p : Player | replaceCard[p] } => deckRemainsConstant
     { no p : Player | playerDies[p] } => tableRemainsConstant
-    all p : (Player - (Table.currentPlayer + ActionSet.targetPlayer + ActionSet.challenge + ActionSet.reactionChallenge)) | {
+    all p : (Player - (ActionSet.currentPlayer + ActionSet.targetPlayer + ActionSet.challenge + ActionSet.reactionChallenge)) | {
         playerRemainsConstant[p]
     }
 }
@@ -328,29 +381,39 @@ pred init {
 }
 
 pred trans {
-    // WRONG because the next player can die
-    // Table.currentPlayer' = Table.playerOrder[Table.currentPlayer]
-    // WRONG because currentPlayer can die
-    // Table.currentPlayer' = (Table.playerOrder')[Table.currentPlayer]
-
-    Table.currentPlayer not in (Table.playerOrder').Player => {
+    ActionSet.currentPlayer not in (Table.playerOrder').Player => {
         // the current player dies
-        Table.currentPlayer' = Table.playerOrder[Table.currentPlayer]
+        ActionSet.currentPlayer' = Table.playerOrder[ActionSet.currentPlayer]
     } else {
         // the next player dies
-        Table.playerOrder[Table.currentPlayer] not in (Table.playerOrder').Player => {
-            Table.currentPlayer' = Table.playerOrder[Table.playerOrder[Table.currentPlayer]]
+        Table.playerOrder[ActionSet.currentPlayer] not in (Table.playerOrder').Player => {
+            ActionSet.currentPlayer' = Table.playerOrder[Table.playerOrder[ActionSet.currentPlayer]]
         } else {
             // anyone else may or may not have died
-            Table.currentPlayer' = Table.playerOrder[Table.currentPlayer]
+            ActionSet.currentPlayer' = Table.playerOrder[ActionSet.currentPlayer]
         }
     }
+
+    var deadActingPlayer : lone Player,
+    var deadTargetPlayer : lone Player,
+    var deadReactingPlayer : lone Player,
+    var deadChallenge : lone Player,
+    var deadReactionChallenge : lone Player,
+    // Lone players corresponding to those that have lost their cards
+    var replacedCardCurrentPlayer : lone Player,
+    var replacedCardBlockingPlayer : lone Player
     
     (some ActionSet.challenge and challengeSucceeds) => {
         // Challenge succeeds; no action
-        playerDies[Table.currentPlayer]
+        playerDies[ActionSet.currentPlayer]
         deckRemainsConstant
-        all p : Player | (p != Table.currentPlayer) => playerRemainsConstant[p]
+        all p : Player | (p != ActionSet.currentPlayer) => playerRemainsConstant[p]
+
+        ActionSet.deadActingPlayer = ActionSet.currentPlayer
+        no ActionSet.deadTargetPlayer
+        no ActionSet.deadReactingPlayer
+        no ActionSet.deadChallenge
+        no ActionSet.deadReactionChallenge
     } 
     else {
         // No successful challenge
@@ -358,13 +421,21 @@ pred trans {
             // challenged unsuccessfully; continue to block challenge check
             playerDies[ActionSet.challenge]
             // replace card
-            replaceCard[Table.currentPlayer]
+            replaceCard[ActionSet.currentPlayer]
+
+            ActionSet.deadChallenge = ActionSet.challenge
+            // no ActionSet.deadActingPlayer
+            no ActionSet.deadTargetPlayer
+            no ActionSet.deadReactingPlayer
+            no ActionSet.deadReactionChallenge
         }
         (some ActionSet.reactionChallenge and reactionChallengeSucceeds) => {
             // Action attempted to block; block was successfully challenged
             playerDies[ActionSet.reactingPlayer]
             // Action goes through
             doAction
+            
+            ActionSet.deadReactingPlayer = ActionSet.reactingPlayer
         } else {
             (some ActionSet.reactionChallenge and not reactionChallengeSucceeds) => {
                 // block was challenged unsuccessfully; continue to action
@@ -376,6 +447,7 @@ pred trans {
                 allRemainsConstant 
             } else {
                 // action goes through
+
                 doAction
             }
         }
@@ -450,5 +522,6 @@ test expect {
 run {
     traces
     numCards
+    foreignAid
     eventually { ActionSet.action = Coup }
 } for exactly 9 Card, exactly 3 Player, 5 Int
