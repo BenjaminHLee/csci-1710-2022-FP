@@ -89,15 +89,15 @@ function createInstVis(instJson) {
     const playerTable = getElem('playerTable', 'table');
     createTable(playerTable, 'Players', ['Player', 'Card', 'Role', 'Money', 'Current'], instJson.players);
 
+    const actionSetTable = getElem('actionSetTable', 'table');
+    createTable(actionSetTable, 'Action Set', ['Action', 'Target Player', 'Challenge', 'Reaction', 
+        'Reacting Player', 'Reaction Challenge'], [instJson.actionSet]);
+
     const revealedTable = getElem('revealedTable', 'table');
     createTable(revealedTable, 'Revealed', ['Card', 'Role'], instJson.revealed);
 
     const deckTable = getElem('deckTable', 'table');
     createTable(deckTable, 'Deck (top to bottom)', ['Card', 'Role'], instJson.deck)
-
-    const actionSetTable = getElem('actionSetTable', 'table');
-    createTable(actionSetTable, 'Action Set', ['Action', 'Target Player', 'Challenge', 'Reaction', 
-        'Reacting Player', 'Reaction Challenge'], [instJson.actionSet]);
 }
 
 function instanceToJson(inst) {
