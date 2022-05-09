@@ -383,7 +383,7 @@ pred tax {
     // no ActionSet.deadReactionChallenge
 
     ActionSet.currentPlayer.money' = add[ActionSet.currentPlayer.money, 3]
-    { not replaceCard[ActionSet.currentPlayer] } => ActionSet.currentPlayer.card' = ActionSet.currentPlayer.card
+    { no ActionSet.replacedCardCurrentPlayer } => ActionSet.currentPlayer.card' = ActionSet.currentPlayer.card
     ActionSet.currentPlayer.knowledge' = ActionSet.currentPlayer.knowledge
     
     unaffectedRemainConstant[ActionSet.currentPlayer]
@@ -636,6 +636,7 @@ pred trans {
                 
                 all p : Player | playerRemainsConstant[p]
                 deckRemainsConstant
+                tableRemainsConstant
                 
                 no ActionSet.deadActingPlayer
                 no ActionSet.deadTargetPlayer
