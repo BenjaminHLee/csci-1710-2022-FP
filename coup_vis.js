@@ -3,6 +3,9 @@
 //   put the `div` variable in scope.
 
 const maindiv = div;
+maindiv.style.overflow = "auto"
+maindiv.style.maxHeight = (window.innerHeight - 100) + "px"
+
 const allInstJson = instances.map(instanceToJson);
 const numInst = instances.length - 1;
 
