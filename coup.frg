@@ -328,7 +328,6 @@ pred coup {
     no ActionSet.deadChallenge
     no ActionSet.deadReactionChallenge
 
-
     ActionSet.currentPlayer.card' = ActionSet.currentPlayer.card
     ActionSet.currentPlayer.knowledge' = ActionSet.currentPlayer.knowledge
     ActionSet.currentPlayer.money' = subtract[ActionSet.currentPlayer.money, 7]
@@ -370,6 +369,9 @@ pred foreignAid {
     ActionSet.currentPlayer.knowledge' = ActionSet.currentPlayer.knowledge
 
     unaffectedRemainConstant[ActionSet.currentPlayer]
+
+    all p : Player - (ActionSet.currentPlayer + ActionSet.targetPlayer) | 
+        (not playerDies[p]) => p.money' = p.money
 }
 
 pred tax {
@@ -385,6 +387,9 @@ pred tax {
     ActionSet.currentPlayer.knowledge' = ActionSet.currentPlayer.knowledge
     
     unaffectedRemainConstant[ActionSet.currentPlayer]
+
+    all p : Player - (ActionSet.currentPlayer + ActionSet.targetPlayer) | 
+        (not playerDies[p]) => p.money' = p.money
 }
 
 pred steal {
@@ -411,6 +416,9 @@ pred steal {
     }
 
     unaffectedRemainConstant[ActionSet.targetPlayer]
+
+    all p : Player - (ActionSet.currentPlayer + ActionSet.targetPlayer) | 
+        (not playerDies[p]) => p.money' = p.money
 }
 
 pred assassinate {
@@ -428,6 +436,9 @@ pred assassinate {
     playerDies[ActionSet.targetPlayer]
 
     unaffectedRemainConstant[ActionSet.targetPlayer]
+
+    all p : Player - (ActionSet.currentPlayer + ActionSet.targetPlayer) | 
+        (not playerDies[p]) => p.money' = p.money
 }
 
 // TODO: FILL IN
@@ -603,6 +614,8 @@ pred trans {
                     all p : (Player - (ActionSet.reactingPlayer + ActionSet.reactionChallenge)) | 
                         playerRemainsConstant[p]
                     
+                    ActionSet.reactingPlayer.money' = ActionSet.reactingPlayer.money
+
                     no ActionSet.deadActingPlayer
                     no ActionSet.deadTargetPlayer
                     no ActionSet.deadChallenge
