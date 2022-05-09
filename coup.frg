@@ -537,6 +537,8 @@ pred trans {
                         playerDies[ActionSet.reactionChallenge]
                         replaceCard[ActionSet.currentPlayer]
                         replaceCard[ActionSet.reactingPlayer]
+                        ActionSet.currentPlayer.money' = ActionSet.currentPlayer.money
+                        ActionSet.reactingPlayer.money' = ActionSet.reactingPlayer.money
 
                         all p : (Player - (ActionSet.currentPlayer + ActionSet.reactingPlayer
                                             + ActionSet.challenge + ActionSet.reactionChallenge)) | 
@@ -556,6 +558,7 @@ pred trans {
                     -- challenger dies, actor replaces card
                     playerDies[ActionSet.challenge]
                     replaceCard[ActionSet.currentPlayer]
+                    ActionSet.currentPlayer.money' = ActionSet.currentPlayer.money
 
                     all p : (Player - (ActionSet.currentPlayer + ActionSet.challenge)) | 
                         playerRemainsConstant[p]
@@ -612,11 +615,11 @@ pred trans {
                     -- reaction challenger dies, replace card of reactor
                     playerDies[ActionSet.reactionChallenge]
                     replaceCard[ActionSet.reactingPlayer]
+                    ActionSet.reactingPlayer.money' = ActionSet.reactingPlayer.money
                     
                     all p : (Player - (ActionSet.reactingPlayer + ActionSet.reactionChallenge)) | 
                         playerRemainsConstant[p]
                     
-                    ActionSet.reactingPlayer.money' = ActionSet.reactingPlayer.money
 
                     no ActionSet.deadActingPlayer
                     no ActionSet.deadTargetPlayer
