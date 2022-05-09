@@ -36,3 +36,9 @@
 
 // pred GameState[targetPlayer : lone Player, action : one Action, challenge : lone Player, reactionChallenge : lone Player]
 // maybe say every possible GameState exists so you can quantify over them (PROBABLY TOO MANY)
+
+
+### TODOS:
+- remove ambassador 
+- potentially add contessa and assassin
+- check unaffected remains constant
