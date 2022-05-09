@@ -124,7 +124,7 @@ function instanceToJson(inst) {
     const cardOrderField = deckSig.join(deckCardOrderField)
 
     const getPlayerFields = (player) => {
-        const isCurrentPlayer = (player.id() === first(tableSig.join(tableCurrentPlayerField)));
+        const isCurrentPlayer = (player.id() === first(actionSetSig.join(tableCurrentPlayerField)));
         return {
             name: player.id(),
             card: first(player.join(playerCardField)),

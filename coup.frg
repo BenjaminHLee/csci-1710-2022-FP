@@ -69,6 +69,25 @@ one sig Deck {
 
 
 
+//  challenge
+    //      succeed -> actor dies
+    //      fail
+    //          reaction
+    //              reaction challenge
+    //                  succeed -> challenger dies, actor replaces card, reactor dies, do action
+    //                  fail -> challenger dies, actor replaces card, reaction challenger dies, reactor replaces card
+    //              no reaction challenge -> challenger dies, actor replaces card
+    //          no reaction -> challenger dies, actor replaces card, do action
+    //  no challenge
+    //      reaction
+    //          reaction challenge
+    //              succeed -> reactor dies, do action
+    //              fail -> reaction challenger dies, replace card of reactor
+    //          no reaction challenge -> [nothing]
+    //      no reaction -> do action
+
+
+
 // Utility predicates: keep certain parts of the state constant
 
 pred deckRemainsConstant {
@@ -108,13 +127,13 @@ pred inDeck[c : Card] {
 // Wellformedness checks
 
 pred deadAndDrawsValid {
-    // some ActionSet.deadActingPlayer => some ActionSet.currentPlayer
-    // some ActionSet.deadTargetPlayer => some ActionSet.targetPlayer
-    // some ActionSet.deadReactingPlayer => some ActionSet.reactingPlayer
-    // some ActionSet.deadChallenge => some ActionSet.challenge
-    // some ActionSet.deadReactionChallenge => some ActionSet.reactionChallenge
-    // some ActionSet.replacedCardCurrentPlayer => some ActionSet.currentPlayer
-    // some ActionSet.replacedCardReactingPlayer => some ActionSet.reactingPlayer
+    some ActionSet.deadActingPlayer => some ActionSet.currentPlayer
+    some ActionSet.deadTargetPlayer => some ActionSet.targetPlayer
+    some ActionSet.deadReactingPlayer => some ActionSet.reactingPlayer
+    some ActionSet.deadChallenge => some ActionSet.challenge
+    some ActionSet.deadReactionChallenge => some ActionSet.reactionChallenge
+    some ActionSet.replacedCardCurrentPlayer => some ActionSet.currentPlayer
+    some ActionSet.replacedCardReactingPlayer => some ActionSet.reactingPlayer
 }
 
 pred targetAndReactingPlayerValid {
@@ -171,8 +190,6 @@ pred reactionChallengeValid {
     some ActionSet.reactionChallenge => {
         some ActionSet.reaction
         isAlive[ActionSet.reactionChallenge]
-        // This is WRONG
-        // ActionSet.reactionChallenge != ActionSet.currentPlayer
         ActionSet.reactionChallenge != ActionSet.reactingPlayer
         // we allow someone to both block steal and challenge
         // we allow the other person to still challenge the block, even if the original challenge was correct
@@ -271,8 +288,8 @@ pred reactionChallengeSucceeds {
 // Action helper predicates
 
 pred unaffectedRemainConstant[affectedPlayer : Player] {
-    affectedPlayer is another player that isn't constrained.
-    if no such player should exist, just pass in currentPlayer
+    // affectedPlayer is another player that isn't constrained.
+    // if no such player should exist, just pass in currentPlayer
     { no p : Player | replaceCard[p] } => deckRemainsConstant
     { no p : Player | playerDies[p] } => tableRemainsConstant
 
@@ -462,23 +479,6 @@ pred trans {
             ActionSet.currentPlayer' = Table.playerOrder[ActionSet.currentPlayer]
         }
     }
-
-    //  challenge
-    //      succeed -> actor dies
-    //      fail
-    //          reaction
-    //              reaction challenge
-    //                  succeed -> challenger dies, actor replaces card, reactor dies, do action
-    //                  fail -> challenger dies, actor replaces card, reaction challenger dies, reactor replaces card
-    //              no reaction challenge -> challenger dies, actor replaces card
-    //          no reaction -> challenger dies, actor replaces card, do action
-    //  no challenge
-    //      reaction
-    //          reaction challenge
-    //              succeed -> reactor dies, do action
-    //              fail -> reaction challenger dies, replace card of reactor
-    //          no reaction challenge -> [nothing]
-    //      no reaction -> do action
     
     (some ActionSet.challenge) => {
         (challengeSucceeds) => {
@@ -510,7 +510,7 @@ pred trans {
                         // no constancy constraints (handled in doAction)
 
                         no ActionSet.deadActingPlayer
-                        no ActionSet.deadTargetPlayer
+                        // no ActionSet.deadTargetPlayer
                         ActionSet.deadChallenge = ActionSet.challenge
                         ActionSet.deadReactingPlayer = ActionSet.reactingPlayer
                         no ActionSet.deadReactionChallenge
@@ -566,7 +566,7 @@ pred trans {
                 // no constancy constraint
                 
                 no ActionSet.deadActingPlayer
-                no ActionSet.deadTargetPlayer
+                // no ActionSet.deadTargetPlayer
                 ActionSet.deadChallenge = ActionSet.challenge
                 no ActionSet.deadReactingPlayer
                 no ActionSet.deadReactionChallenge
@@ -587,7 +587,7 @@ pred trans {
                     // no constancy constraint
                     
                     no ActionSet.deadActingPlayer
-                    no ActionSet.deadTargetPlayer
+                    // no ActionSet.deadTargetPlayer
                     no ActionSet.deadChallenge
                     ActionSet.deadReactingPlayer = ActionSet.reactingPlayer
                     no ActionSet.deadReactionChallenge
@@ -636,7 +636,7 @@ pred trans {
             // no constancy constraint
             
             no ActionSet.deadActingPlayer
-            no ActionSet.deadTargetPlayer
+            // no ActionSet.deadTargetPlayer
             no ActionSet.deadChallenge
             no ActionSet.deadReactingPlayer
             no ActionSet.deadReactionChallenge
@@ -707,6 +707,6 @@ test expect {
 run {
     traces
     numCards
-    // foreignAid
-    // eventually { ActionSet.action = Coup } 
+    foreignAid
+    eventually { ActionSet.action = Coup } 
 } for exactly 9 Card, exactly 3 Player, 5 Int
