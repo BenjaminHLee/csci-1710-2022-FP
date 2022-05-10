@@ -7,7 +7,7 @@ option max_tracelength 20
 abstract sig Role {}
 one sig Duke extends Role {}
 one sig Captain extends Role {}
-one sig Ambassador extends Role {}
+// one sig Ambassador extends Role {}
 one sig Assassin extends Role {}
 one sig Contessa extends Role {}
 
@@ -28,14 +28,14 @@ one sig Income extends Action {}
 one sig ForeignAid extends Action {}
 one sig Tax extends Action {}
 one sig Steal extends Action {}
-one sig Exchange extends Action {}
+// one sig Exchange extends Action {}
 one sig Assassinate extends Action {}
 one sig DoNothing extends Action {}
 
 abstract sig Reaction {}
 one sig BlockAssassinate extends Reaction {}
 one sig BlockForeignAid extends Reaction {}
-one sig BlockStealWithAmbassador extends Reaction {}
+// one sig BlockStealWithAmbassador extends Reaction {}
 one sig BlockStealWithCaptain extends Reaction {}
 
 one sig ActionSet {
@@ -168,8 +168,8 @@ pred actionValid {
 pred challengeValid {
     some ActionSet.challenge => {
         // the action has to be "challengable"
-        (ActionSet.action = Exchange or
-            ActionSet.action = Steal or
+        (ActionSet.action = Steal or
+            //ActionSet.action = Exchange or
             ActionSet.action = Tax or
             ActionSet.action = Assassinate)
         isAlive[ActionSet.challenge]
@@ -181,7 +181,7 @@ pred reactionValid {
     some ActionSet.reaction => {
         (ActionSet.action = ForeignAid and ActionSet.reaction = BlockForeignAid) or 
         (ActionSet.action = Steal and 
-            (ActionSet.reaction = BlockStealWithAmbassador or 
+            (//ActionSet.reaction = BlockStealWithAmbassador or 
              ActionSet.reaction = BlockStealWithCaptain)) or 
         (ActionSet.action = Assassinate and ActionSet.reaction = BlockAssassinate)
     }
@@ -271,15 +271,15 @@ pred replaceCard[p : Player] {
 }
 
 pred challengeSucceeds {
-    ((ActionSet.action = Exchange and ActionSet.currentPlayer.card.role != Ambassador) or
-        (ActionSet.action = Steal and ActionSet.currentPlayer.card.role != Captain) or
+    ((ActionSet.action = Steal and ActionSet.currentPlayer.card.role != Captain) or
+        // (ActionSet.action = Exchange and ActionSet.currentPlayer.card.role != Ambassador) or
         (ActionSet.action = Tax and ActionSet.currentPlayer.card.role != Duke) or
         (ActionSet.action = Assassinate and ActionSet.currentPlayer.card.role != Assassin))
 }
 
 pred reactionChallengeSucceeds {
-    ((ActionSet.reaction = BlockStealWithAmbassador and ActionSet.reactingPlayer.card.role != Ambassador) or
-        (ActionSet.reaction = BlockStealWithCaptain and ActionSet.reactingPlayer.card.role != Captain) or
+    ((ActionSet.reaction = BlockStealWithCaptain and ActionSet.reactingPlayer.card.role != Captain) or
+        // (ActionSet.reaction = BlockStealWithAmbassador and ActionSet.reactingPlayer.card.role != Ambassador) or
         (ActionSet.reaction = BlockForeignAid and ActionSet.reactingPlayer.card.role != Duke) or
         (ActionSet.reaction = BlockAssassinate and ActionSet.reactingPlayer.card.role != Contessa))
 }
@@ -446,17 +446,16 @@ pred assassinate {
         (not playerDies[p]) => p.money' = p.money
 }
 
-// TODO: FILL IN
-pred exchange {
-    // Some can die because of this action
-    no ActionSet.deadActingPlayer
-    no ActionSet.deadTargetPlayer
-    no ActionSet.deadReactingPlayer
-    // no ActionSet.deadChallenge
-    no ActionSet.deadReactionChallenge
+// pred exchange {
+//     // Some can die because of this action
+//     no ActionSet.deadActingPlayer
+//     no ActionSet.deadTargetPlayer
+//     no ActionSet.deadReactingPlayer
+//     // no ActionSet.deadChallenge
+//     no ActionSet.deadReactionChallenge
     
-    allRemainsConstant
-}
+//     allRemainsConstant
+// }
 
 pred doAction {
     ActionSet.action = Coup => coup
@@ -464,7 +463,7 @@ pred doAction {
     ActionSet.action = ForeignAid => foreignAid
     ActionSet.action = Tax => tax
     ActionSet.action = Steal => steal
-    ActionSet.action = Exchange => exchange
+    // ActionSet.action = Exchange => exchange
     ActionSet.action = Assassinate => assassinate
     ActionSet.action = DoNothing => allRemainsConstant
 }
@@ -696,7 +695,7 @@ pred trans {
 }
 
 pred numCards {
-    #{ c : Card | c.role = Ambassador } = 3
+    // #{ c : Card | c.role = Ambassador } = 3
     #{ c : Card | c.role = Captain } = 3
     #{ c : Card | c.role = Duke } = 3
     #{ c : Card | c.role = Contessa } = 3
@@ -762,4 +761,4 @@ run {
     // eventually { ActionSet.action = Coup } 
     // eventually { some disj a, b : Player | playerDies[a] and playerDies[b] }
     eventually { no ActionSet.challenge and ActionSet.reaction = BlockAssassinate and ActionSet.targetPlayer.card.role = Contessa }
-} for exactly 15 Card, exactly 3 Player, 5 Int
+} for exactly 12 Card, exactly 3 Player, 5 Int
