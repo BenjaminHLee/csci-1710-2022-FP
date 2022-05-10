@@ -401,10 +401,14 @@ pred steal {
     // no ActionSet.deadChallenge
     // no ActionSet.deadReactionChallenge
 
-    { not replaceCard[ActionSet.currentPlayer] } => ActionSet.currentPlayer.card' = ActionSet.currentPlayer.card
+    { no ActionSet.replacedCardCurrentPlayer } => 
+        ActionSet.currentPlayer.card' = ActionSet.currentPlayer.card
     ActionSet.currentPlayer.knowledge' = ActionSet.currentPlayer.knowledge
-    { not replaceCard[ActionSet.targetPlayer] } => ActionSet.targetPlayer.card' = ActionSet.targetPlayer.card
+
+    { ActionSet.replacedCardReactingPlayer != ActionSet.targetPlayer } => 
+        ActionSet.targetPlayer.card' = ActionSet.targetPlayer.card
     ActionSet.targetPlayer.knowledge' = ActionSet.targetPlayer.knowledge
+
     ActionSet.targetPlayer.money <= 1 => {
         let stealMoney = ActionSet.targetPlayer.money | {
             ActionSet.currentPlayer.money' = add[ActionSet.currentPlayer.money, stealMoney]
