@@ -158,6 +158,7 @@ pred targetAndReactingPlayerValid {
 
 pred actionValid {
     ActionSet.action = DoNothing iff #{ Table.playerOrder } = 1
+    ActionSet.action = Assassinate => ActionSet.currentPlayer.money >= 3
     ActionSet.action = Coup => ActionSet.currentPlayer.money >= 7
     // must coup if above 10 coins
     // ActionSet.currentPlayer.money >= 10 => ActionSet.action = Coup
@@ -537,7 +538,12 @@ pred trans {
                         playerDies[ActionSet.reactionChallenge]
                         replaceCard[ActionSet.currentPlayer]
                         replaceCard[ActionSet.reactingPlayer]
-                        ActionSet.currentPlayer.money' = ActionSet.currentPlayer.money
+                        ActionSet.action = Assassinate => {
+                            // Assassinating always costs money
+                            ActionSet.currentPlayer.money' = subtract[ActionSet.currentPlayer.money, 3]
+                        } else {
+                            ActionSet.currentPlayer.money' = ActionSet.currentPlayer.money
+                        }
                         ActionSet.reactingPlayer.money' = ActionSet.reactingPlayer.money
 
                         all p : (Player - (ActionSet.currentPlayer + ActionSet.reactingPlayer
@@ -558,7 +564,12 @@ pred trans {
                     -- challenger dies, actor replaces card
                     playerDies[ActionSet.challenge]
                     replaceCard[ActionSet.currentPlayer]
-                    ActionSet.currentPlayer.money' = ActionSet.currentPlayer.money
+                    ActionSet.action = Assassinate => {
+                        // Assassinating always costs money
+                        ActionSet.currentPlayer.money' = subtract[ActionSet.currentPlayer.money, 3]
+                    } else {
+                        ActionSet.currentPlayer.money' = ActionSet.currentPlayer.money
+                    }
 
                     all p : (Player - (ActionSet.currentPlayer + ActionSet.challenge)) | 
                         playerRemainsConstant[p]
@@ -616,8 +627,15 @@ pred trans {
                     playerDies[ActionSet.reactionChallenge]
                     replaceCard[ActionSet.reactingPlayer]
                     ActionSet.reactingPlayer.money' = ActionSet.reactingPlayer.money
+                    ActionSet.action = Assassinate => {
+                        // Assassinating always costs money
+                        ActionSet.currentPlayer.money' = subtract[ActionSet.currentPlayer.money, 3]
+                    } else {
+                        ActionSet.currentPlayer.money' = ActionSet.currentPlayer.money
+                    }
+                    ActionSet.currentPlayer.card' = ActionSet.currentPlayer.card
                     
-                    all p : (Player - (ActionSet.reactingPlayer + ActionSet.reactionChallenge)) | 
+                    all p : (Player - (ActionSet.currentPlayer + ActionSet.reactingPlayer + ActionSet.reactionChallenge)) | 
                         playerRemainsConstant[p]
                     
 
@@ -634,7 +652,15 @@ pred trans {
             {
                 -- nothing happens (cool beans)
                 
-                all p : Player | playerRemainsConstant[p]
+                ActionSet.action = Assassinate => {
+                    // Assassinating always costs money
+                    ActionSet.currentPlayer.money' = subtract[ActionSet.currentPlayer.money, 3]
+                } else {
+                    ActionSet.currentPlayer.money' = ActionSet.currentPlayer.money
+                }
+                ActionSet.currentPlayer.card' = ActionSet.currentPlayer.card
+                
+                all p : Player - ActionSet.currentPlayer | playerRemainsConstant[p]
                 deckRemainsConstant
                 tableRemainsConstant
                 
@@ -669,6 +695,8 @@ pred numCards {
     #{ c : Card | c.role = Ambassador } = 3
     #{ c : Card | c.role = Captain } = 3
     #{ c : Card | c.role = Duke } = 3
+    #{ c : Card | c.role = Contessa } = 3
+    #{ c : Card | c.role = Assassin } = 3
 }
 
 pred traces {
@@ -726,6 +754,8 @@ test expect {
 run {
     traces
     numCards
-    foreignAid
-    eventually { ActionSet.action = Coup } 
-} for exactly 9 Card, exactly 3 Player, 5 Int
+    // foreignAid
+    // eventually { ActionSet.action = Coup } 
+    // eventually { some disj a, b : Player | playerDies[a] and playerDies[b] }
+    eventually { no ActionSet.challenge and ActionSet.reaction = BlockAssassinate and ActionSet.targetPlayer.card.role = Contessa }
+} for exactly 15 Card, exactly 3 Player, 5 Int
