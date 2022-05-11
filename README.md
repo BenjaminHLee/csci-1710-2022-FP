@@ -2,14 +2,14 @@
 CSCI 1710 Final Project
 
 
-## what is model
+## What is the Model
 
-### game
+### Game
 We chose to model endgames of a cardgame called Coup which involves hidden roles and bluffing (an online version of this game can be found here https://coup.thebrown.net/). The game is constrained by a set of rules that fit on the back of a playing card, but there are still many complicated ways in which the game can play out.
 
 Oftentimes when playing the game, we wonder whether or not it is possible to "force" a win (a dominant strategy). We were hoping to be able to explore this concept.
 
-### sigs
+### Sigs
 - Player : Sig for representing a single player (with a single card and the number of coins the player has)
 - Card : Wrapper around a Role to allow for multiple cards with the same role 
 - Role : Sig for representing which character is on the card (which dictates "allowable" actions) (there are three cards with each role)
@@ -17,11 +17,11 @@ Oftentimes when playing the game, we wonder whether or not it is possible to "fo
 - Deck : Sig to represent the linear ordering of cards which are able to be drawn 
 - Table : Sig to hold cards that are lost by players and have been revealed as well as the player order (which is circular)
 
-### vis
+### Vis
 A simplification of Sterling's table view that allows navigation between states with next and previous state buttons.
 An instance represents the rest of the game until there is one player left (ie. until a player wins). We create a lasso trace with the existence of a doNothing Action once a player wins. 
 
-## changed goals
+## Changed Goals
 We originally planned to model player knowledge in order to demonstrate whether a forced win was truly possible. In the game, there are ways to gain knowledge about what other players may or may not be holding through actions and challenges. However the idea of knowledge is quite complex to model and we did not end up with enough time to model more than the core game. 
 
 ## Limitations
