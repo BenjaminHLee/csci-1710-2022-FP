@@ -1,13 +1,11 @@
 # csci-1710-2022-FP
-CSCI 1710 Final Project
 
+## Model
 
-## What is the Model
+### The Game
+We chose to model endgames of a cardgame called Coup which involves hidden roles and bluffing (an online version of this game can be found here https://coup.thebrown.net/). The game is constrained by a set of rules that fit on the back of a playing card, but there are still many complicated ways in which the game can play out. See below for the full tree of possibilities for a given turn.
 
-### Game
-We chose to model endgames of a cardgame called Coup which involves hidden roles and bluffing (an online version of this game can be found here https://coup.thebrown.net/). The game is constrained by a set of rules that fit on the back of a playing card, but there are still many complicated ways in which the game can play out.
-
-Oftentimes when playing the game, we wonder whether or not it is possible to "force" a win (a dominant strategy). We were hoping to be able to explore this concept.
+When we've played the game, we've often wondered whether or not it is possible to "force" a win (a dominant strategy, in game-theoretic terms). We were hoping to be able to explore this concept.
 
 ### Sigs
 - Player : Sig for representing a single player (with a single card and the number of coins the player has)
@@ -17,7 +15,7 @@ Oftentimes when playing the game, we wonder whether or not it is possible to "fo
 - Deck : Sig to represent the linear ordering of cards which are able to be drawn 
 - Table : Sig to hold cards that are lost by players and have been revealed as well as the player order (which is circular)
 
-### Vis
+### Visualization
 A simplification of Sterling's table view that allows navigation between states with next and previous state buttons.
 An instance represents the rest of the game until there is one player left (ie. until a player wins). We create a lasso trace with the existence of a doNothing Action once a player wins. 
 
@@ -30,7 +28,7 @@ Our model is scoped only to handle endgame scenarios (ie. all remaining players 
 ## Tradeoffs
 We model each "turn" as a set of 4 stages (action, challenge, reaction, reaction challenge). The fact that we put each turn as the combination of multiple player decisions (in the ActionSet Sig) makes it inherently impossible to quantify over all possible decisions that a single given player might make. The decision to put all these stages together was necessary however, due to the difficulty associated with changing/reverting state within a single turn (eg. if a steal was blocked). 
 
-
+## A Turn in Coup
 
 Below is an example of the tree of possibilies with how a turn could possibly play out :) 
 
@@ -53,5 +51,8 @@ Below is an example of the tree of possibilies with how a turn could possibly pl
          no reaction -> do action
 </code></pre>
 
-#### fossil code
+#### Fossil Code
 We left in a number of commented out lines in the model in order for us to keep track of what SHOULDN'T be constrained in certain predicates. We understand that this makes the model longer than necessary, but we think that it is important for readability. 
+
+## Presentation
+We've captured two examples [here](https://docs.google.com/presentation/d/1oxPboT_tyrb4js5wSS09JSQFMIhKBTXbmm1ns0YcmX8/edit?usp=sharing).
