@@ -1,6 +1,6 @@
 # csci-1710-2022-FP
 
-## What is the Model
+## Model
 
 ### The Game
 We chose to model endgames of a cardgame called Coup which involves hidden roles and bluffing (an online version of this game can be found here https://coup.thebrown.net/). The game is constrained by a set of rules that fit on the back of a playing card, but there are still many complicated ways in which the game can play out. See below for the full tree of possibilities for a given turn.
@@ -53,3 +53,6 @@ Below is an example of the tree of possibilies with how a turn could possibly pl
 
 #### Fossil Code
 We left in a number of commented out lines in the model in order for us to keep track of what SHOULDN'T be constrained in certain predicates. We understand that this makes the model longer than necessary, but we think that it is important for readability. 
+
+## Presentation
+We've captured two examples [here](https://docs.google.com/presentation/d/1oxPboT_tyrb4js5wSS09JSQFMIhKBTXbmm1ns0YcmX8/edit?usp=sharing).
