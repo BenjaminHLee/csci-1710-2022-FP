@@ -1,4 +1,4 @@
-#lang forge
+#lang forge "final" "SRl35bTBypTIZWmm"
 
 open "coup.frg"
 
