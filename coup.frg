@@ -1,7 +1,7 @@
 #lang forge "final" "SRl35bTBypTIZWmm"
 
 option problem_type temporal
-option max_tracelength 20
+option max_tracelength 15
 
 abstract sig Role {}
 one sig Duke extends Role {}
@@ -232,6 +232,7 @@ pred wellformed {
 **/
 
 pred playerDies[p : Player] {
+    some p.card
     no p.card'
     Table.revealed' = Table.revealed + p.card
     // remove the player from the rotation
@@ -672,8 +673,20 @@ pred traces {
     always trans
 }
 
+pred doesWin[p : Player] {
+    eventually { ActionSet.currentPlayer = p and ActionSet.action = DoNothing }
+}
+
+// run {
+//     traces
+//     eventually { ActionSet.action = Coup }
+//     eventually { some ActionSet.reactionChallenge }
+// } for exactly 12 Card, exactly 3 Player, 5 Int
+
 run {
     traces
-    numCards
-    eventually { ActionSet.action = Coup }
+    always { 
+        ActionSet.action = Tax or ActionSet.action = Coup or ActionSet.action = DoNothing
+        no ActionSet.challenge 
+    }
 } for exactly 12 Card, exactly 3 Player, 5 Int

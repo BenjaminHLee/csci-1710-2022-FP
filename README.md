@@ -34,6 +34,7 @@ We model each "turn" as a set of 4 stages (action, challenge, reaction, reaction
 
 Below is an example of the tree of possibilies with how a turn could possibly play out :) 
 
+<pre><code>
  challenge
          succeed -> actor dies
          fail
@@ -50,7 +51,7 @@ Below is an example of the tree of possibilies with how a turn could possibly pl
                  fail -> reaction challenger dies, replace card of reactor
              no reaction challenge -> [nothing]
          no reaction -> do action
-
+</code></pre>
 
 #### fossil code
 We left in a number of commented out lines in the model in order for us to keep track of what SHOULDN'T be constrained in certain predicates. We understand that this makes the model longer than necessary, but we think that it is important for readability. 
