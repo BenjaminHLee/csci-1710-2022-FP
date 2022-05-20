@@ -27,7 +27,7 @@ test expect {
         eventually { some disj p1, p2 : Player | {playerDies[p1] and playerDies[p2]} }
     } for exactly 12 Card, exactly 3 Player, 5 Int is unsat
 
-    as above, this is a valid case in the real game, but allowing for it would complicate the model
+    // as above, this is a valid case in the real game, but allowing for it would complicate the model
     noTwoFailedChallenges: {
         traces
         numCards
@@ -98,9 +98,9 @@ pred doesWin[p : Player] {
 
 test expect {
     playerCanWin: {
-        some p1 : Player | {
+        some p : Player | {
             traces
-            doesWin[p1] where p1 is constrained appropriately
+            doesWin[p]
         }
     } for exactly 12 Card, exactly 2 Player, 5 Int is sat
 
@@ -140,13 +140,13 @@ test expect {
 
     surviveTrueAssassin: {
         traces => (
-            always ((ActionSet.action = Assassinate and ActionSet.currentPlayer.card.role = Assassin) => (
+            always ((ActionSet.action = Assassinate and ActionSet.currentPlayer.card.role = Assassin) => {
                 ((all p : Player | p = ActionSet.targetPlayer => doesWin[p]) => ActionSet.reaction = BlockAssassinate)
                 ((ActionSet.reaction = BlockAssassinate 
                         and ActionSet.targetPlayer.card.role = Contessa 
                         and some ActionSet.reactionChallenge) =>
                     (all p : Player | p = ActionSet.targetPlayer => doesWin[p]))
-            ))
+            })
         )
     } for exactly 6 Card, exactly 2 Player, 5 Int is theorem
 
